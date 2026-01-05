@@ -1,9 +1,7 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
   Target, 
   TrendingUp, 
   Calculator, 
@@ -12,22 +10,29 @@ import {
   PlusCircle,
   Menu,
   X,
-  User,
-  MoreHorizontal
+  MoreHorizontal,
+  LogOut,
+  UserRoundSearch
 } from 'lucide-react';
-import { Transaction, Account, FinancialGoal, Investment, Category } from './types';
-import { CATEGORIES, INITIAL_ACCOUNTS } from './constants';
+import { Transaction, Account, FinancialGoal, Investment } from './types';
+import { INITIAL_ACCOUNTS } from './constants';
 import Dashboard from './components/Dashboard';
 import Transactions from './components/Transactions';
 import Planning from './components/Planning';
 import Investments from './components/Investments';
 import CreditSimulator from './components/CreditSimulator';
+import Auth from './components/Auth';
+import Settings from './components/Settings';
 
-type View = 'dashboard' | 'transactions' | 'planning' | 'investments' | 'credit';
+type View = 'dashboard' | 'transactions' | 'planning' | 'investments' | 'credit' | 'settings';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState<any>(() => {
+    const saved = localStorage.getItem('fin_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   
   // Persistence Mock
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -53,7 +58,9 @@ const App: React.FC = () => {
     localStorage.setItem('fin_transactions', JSON.stringify(transactions));
     localStorage.setItem('fin_goals', JSON.stringify(goals));
     localStorage.setItem('fin_investments', JSON.stringify(investments));
-  }, [transactions, goals, investments]);
+    if (user) localStorage.setItem('fin_user', JSON.stringify(user));
+    else localStorage.removeItem('fin_user');
+  }, [transactions, goals, investments, user]);
 
   const addTransaction = (t: Omit<Transaction, 'id'>) => {
     const newT = { ...t, id: Math.random().toString(36).substr(2, 9) };
@@ -63,6 +70,15 @@ const App: React.FC = () => {
   const deleteTransaction = (id: string) => {
     setTransactions(prev => prev.filter(t => t.id !== id));
   };
+
+  const handleLogout = () => {
+    setUser(null);
+    setActiveView('dashboard');
+  };
+
+  if (!user) {
+    return <Auth onLogin={setUser} />;
+  }
 
   const menuItems = [
     { id: 'dashboard', label: 'Início', icon: <LayoutDashboard size={20}/>, fullLabel: 'Painel Geral' },
@@ -79,6 +95,7 @@ const App: React.FC = () => {
       case 'planning': return <Planning goals={goals} setGoals={setGoals} transactions={transactions} />;
       case 'investments': return <Investments investments={investments} setInvestments={setInvestments} />;
       case 'credit': return <CreditSimulator />;
+      case 'settings': return <Settings user={user} setUser={setUser} />;
       default: return <Dashboard transactions={transactions} goals={goals} accounts={accounts} />;
     }
   };
@@ -86,7 +103,7 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden flex-col lg:flex-row">
       
-      {/* Sidebar - Desktop Only or Drawer on Mobile */}
+      {/* Sidebar */}
       <aside className={`
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 transition-transform lg:relative lg:translate-x-0 lg:flex lg:flex-col
@@ -125,15 +142,48 @@ const App: React.FC = () => {
               {item.fullLabel}
             </button>
           ))}
+
+          <div className="mt-8 pt-8 border-t border-slate-100 space-y-1">
+            <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Sessão</p>
+            <button
+              onClick={() => {
+                setActiveView('settings');
+                if (window.innerWidth < 1024) setSidebarOpen(false);
+              }}
+              className={`
+                w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all
+                ${activeView === 'settings' 
+                  ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-100' 
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}
+              `}
+            >
+              <SettingsIcon size={20} className={activeView === 'settings' ? 'text-white' : 'text-slate-400'} />
+              Configurações
+            </button>
+            <button
+              onClick={() => setUser(null)}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold text-slate-500 hover:bg-slate-50 hover:text-blue-600 transition-all"
+            >
+              <UserRoundSearch size={20} className="text-slate-400" />
+              Alterar Usuário
+            </button>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold text-rose-500 hover:bg-rose-50 transition-all"
+            >
+              <LogOut size={20} />
+              Sair do Sistema
+            </button>
+          </div>
         </nav>
 
         <div className="p-6 border-t border-slate-100 bg-slate-50/50">
            <div className="flex items-center gap-3 p-2 bg-white rounded-2xl border border-slate-200 shadow-sm">
               <div className="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden border-2 border-emerald-500 shrink-0">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User" />
+                <img src={user.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"} alt="User" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-800 truncate">João Silva</p>
+                <p className="text-sm font-bold text-slate-800 truncate">{user.name}</p>
                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Premium</p>
               </div>
            </div>
@@ -149,11 +199,11 @@ const App: React.FC = () => {
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-lg">F</span>
             </div>
-            <h2 className="text-base font-black text-slate-800">{menuItems.find(m => m.id === activeView)?.label}</h2>
+            <h2 className="text-base font-black text-slate-800">{menuItems.find(m => m.id === activeView)?.label || 'Configurações'}</h2>
           </div>
           <div className="flex items-center gap-3">
-             <button className="p-2 text-slate-400 hover:text-emerald-600 transition-colors">
-                <PlusCircle size={24} />
+             <button onClick={() => setActiveView('settings')} className={`p-2 transition-colors ${activeView === 'settings' ? 'text-emerald-600' : 'text-slate-400'}`}>
+                <SettingsIcon size={24} />
              </button>
              <button onClick={() => setSidebarOpen(true)} className="p-2 text-slate-500">
                 <Menu size={24} />
@@ -165,9 +215,9 @@ const App: React.FC = () => {
         <header className="hidden lg:flex bg-white/80 backdrop-blur-md border-b border-slate-200 h-20 items-center justify-between px-10 sticky top-0 z-30">
           <div>
             <h2 className="text-xl font-black text-slate-800 tracking-tight">
-              {menuItems.find(m => m.id === activeView)?.fullLabel}
+              {menuItems.find(m => m.id === activeView)?.fullLabel || 'Configurações do Sistema'}
             </h2>
-            <p className="text-xs font-medium text-slate-400">Bem-vindo de volta, João!</p>
+            <p className="text-xs font-medium text-slate-400">Bem-vindo de volta, {user.name.split(' ')[0]}!</p>
           </div>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl">
@@ -175,11 +225,14 @@ const App: React.FC = () => {
                <span className="text-xs font-bold text-slate-700">Meta: 85% Concluída</span>
             </div>
             <div className="flex items-center gap-3 pl-6 border-l border-slate-200">
-              <button className="text-slate-400 hover:text-slate-600 transition-colors relative">
+              <button onClick={() => setActiveView('settings')} className={`transition-colors relative ${activeView === 'settings' ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}>
                 <div className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></div>
                 <SettingsIcon size={22} />
               </button>
-              <button className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-100 hover:scale-105 active:scale-95 transition-all">
+              <button 
+                onClick={() => setActiveView('transactions')}
+                className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-100 hover:scale-105 active:scale-95 transition-all"
+              >
                 <PlusCircle size={22} />
               </button>
             </div>
@@ -193,7 +246,7 @@ const App: React.FC = () => {
           </div>
         </main>
 
-        {/* Mobile Dynamic Navigation Bar (Bottom Nav) */}
+        {/* Mobile Dynamic Navigation Bar */}
         <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-slate-200 px-2 py-2 flex items-center justify-around z-40 pb-safe">
           {menuItems.map((item) => (
             <button
