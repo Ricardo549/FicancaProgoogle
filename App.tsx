@@ -77,13 +77,13 @@ const App: React.FC = () => {
     { id: 'planning', label: 'Metas', icon: <Target size={20}/> },
     { id: 'investments', label: 'Investir', icon: <TrendingUp size={20}/> },
     { id: 'credit', label: 'Crédito', icon: <Calculator size={20}/> },
+    { id: 'settings', label: 'Configurações', icon: <SettingsIcon size={20}/> },
   ];
 
   const renderContent = () => {
     switch(activeView) {
       case 'dashboard': return <Dashboard transactions={transactions} goals={goals} accounts={INITIAL_ACCOUNTS} />;
       case 'transactions': return <Transactions transactions={transactions} onAdd={(t) => setTransactions([{...t, id: Date.now().toString()}, ...transactions])} onDelete={(id) => setTransactions(transactions.filter(t => t.id !== id))} />;
-      // Added missing transactions prop to Planning component
       case 'planning': return <Planning goals={goals} setGoals={setGoals} transactions={transactions} />;
       case 'investments': return <Investments investments={investments} setInvestments={setInvestments} />;
       case 'credit': return <CreditSimulator />;
@@ -110,11 +110,8 @@ const App: React.FC = () => {
           ))}
         </nav>
         <div className="p-6 border-t border-slate-100">
-          <button onClick={() => setActiveView('settings')} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">
-            <SettingsIcon size={20}/> Ajustes
-          </button>
-          <button onClick={() => setUser(null)} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 rounded-xl mt-2 transition-all">
-            <LogOut size={20}/> Sair
+          <button onClick={() => setUser(null)} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+            <LogOut size={20}/> Sair da Conta
           </button>
         </div>
       </aside>
@@ -124,14 +121,14 @@ const App: React.FC = () => {
         <header className="h-16 lg:h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 lg:px-10 flex items-center justify-between sticky top-0 z-40">
           <div className="flex items-center gap-4">
             <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 text-slate-500"><Menu size={24}/></button>
-            <h2 className="text-lg font-black text-slate-800 tracking-tight">{menu.find(m => m.id === activeView)?.label || 'Configurações'}</h2>
+            <h2 className="text-lg font-black text-slate-800 tracking-tight">{menu.find(m => m.id === activeView)?.label || 'Acesso'}</h2>
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden sm:block text-right">
               <p className="text-sm font-bold text-slate-800 leading-none">{user.name}</p>
               <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mt-1">Plano Premium</p>
             </div>
-            <img src={user.avatar} className="w-10 h-10 rounded-xl border border-slate-200" alt="User"/>
+            <img src={user.avatar} className="w-10 h-10 rounded-xl border border-slate-200 cursor-pointer hover:ring-2 hover:ring-emerald-500 transition-all" alt="User" onClick={() => setActiveView('settings')}/>
           </div>
         </header>
 
@@ -142,15 +139,25 @@ const App: React.FC = () => {
 
       {/* Mobile Menu Backdrop */}
       {isMobileMenuOpen && <div onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex">
-        <div className="w-72 bg-white h-full animate-in slide-in-from-left duration-300">
-          <div className="p-8 flex justify-between items-center"><h1 className="font-black">Menu</h1><X size={24}/></div>
-          <nav className="p-4 space-y-2">
+        <div className="w-72 bg-white h-full animate-in slide-in-from-left duration-300 flex flex-col">
+          <div className="p-8 flex justify-between items-center">
+            <h1 className="font-black text-slate-800">Menu</h1>
+            <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-slate-800">
+              <X size={24}/>
+            </button>
+          </div>
+          <nav className="p-4 space-y-2 flex-1">
             {menu.map(item => (
-              <button key={item.id} onClick={() => { setActiveView(item.id as View); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold ${activeView === item.id ? 'bg-emerald-600 text-white' : 'text-slate-500'}`}>
+              <button key={item.id} onClick={() => { setActiveView(item.id as View); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeView === item.id ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500'}`}>
                 {item.icon} {item.label}
               </button>
             ))}
           </nav>
+          <div className="p-6 border-t border-slate-100">
+            <button onClick={() => { setUser(null); setIsMobileMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500">
+              <LogOut size={20}/> Sair da Conta
+            </button>
+          </div>
         </div>
       </div>}
     </div>
