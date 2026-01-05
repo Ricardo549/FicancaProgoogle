@@ -1,6 +1,5 @@
 
-import React from 'react';
-import { Category, TransactionType } from './types';
+import { Category, Account } from './types';
 
 export const CATEGORIES: Category[] = [
   { id: '1', name: 'Salário', icon: '💰', color: '#10b981', type: 'INCOME' },
@@ -14,7 +13,7 @@ export const CATEGORIES: Category[] = [
   { id: '9', name: 'Educação', icon: '📚', color: '#8b5cf6', type: 'EXPENSE' },
 ];
 
-export const INITIAL_ACCOUNTS = [
+export const INITIAL_ACCOUNTS: Account[] = [
   { id: 'acc1', name: 'Banco Principal', balance: 5000, type: 'CHECKING' },
   { id: 'acc2', name: 'Reserva de Emergência', balance: 15000, type: 'SAVINGS' },
   { id: 'acc3', name: 'Carteira', balance: 250, type: 'WALLET' },

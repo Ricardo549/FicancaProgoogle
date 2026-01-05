@@ -52,21 +52,20 @@ export const calculateSac = (amount: number, yearlyInterest: number, months: num
   return schedule;
 };
 
-/**
- * Calculates compound interest with monthly contributions.
- * @param initial Initial capital (R$)
- * @param monthly Monthly contribution (R$)
- * @param yearlyRate Yearly interest rate (percentage, e.g., 10 for 10%)
- * @param years Investment period in years (can be decimal)
- */
 export const calculateCompoundInterest = (
   initial: number, 
   monthly: number, 
   yearlyRate: number, 
   years: number
 ) => {
-  const monthlyRate = Math.max(0, yearlyRate / 100 / 12);
-  const totalMonths = Math.max(0, Math.round(years * 12));
+  // Garantir valores positivos e evitar divisão por zero
+  const safeYears = Math.max(0.1, years);
+  const totalMonths = Math.round(safeYears * 12);
+  
+  // Taxa mensal equivalente (geométrica)
+  const monthlyRate = yearlyRate > 0 
+    ? Math.pow(1 + yearlyRate / 100, 1/12) - 1 
+    : 0;
   
   let totalBalance = initial;
   let totalInvested = initial;
@@ -80,34 +79,36 @@ export const calculateCompoundInterest = (
     monthlyInterest: 0
   }];
 
-  if (totalMonths > 0) {
-    for (let i = 1; i <= totalMonths; i++) {
-      // Contribution happens at the start of the month
-      totalInvested += monthly;
-      const prevBalance = totalBalance;
-      
-      // Calculate interest on the sum of previous balance and new contribution
-      totalBalance = (totalBalance + monthly) * (1 + monthlyRate);
-      
-      const interestEarnedThisMonth = totalBalance - (prevBalance + monthly);
+  for (let i = 1; i <= totalMonths; i++) {
+    const prevBalance = totalBalance;
+    totalInvested += monthly;
+    
+    // Capitalização: Juros sobre (Saldo Anterior + Aporte)
+    totalBalance = (totalBalance + monthly) * (1 + monthlyRate);
+    const interestEarned = totalBalance - (prevBalance + monthly);
 
-      // Record data point for every month to ensure smooth charts
-      // But we'll mostly display years in the UI
-      growth.push({ 
-        month: i, 
-        year: Number((i / 12).toFixed(2)), 
-        amount: totalBalance,
-        invested: totalInvested,
-        interest: totalBalance - totalInvested,
-        monthlyInterest: interestEarnedThisMonth
-      });
-    }
+    growth.push({ 
+      month: i, 
+      year: Number((i / 12).toFixed(2)), 
+      amount: totalBalance,
+      invested: totalInvested,
+      interest: totalBalance - totalInvested,
+      monthlyInterest: interestEarned
+    });
   }
   
   return { 
     total: totalBalance, 
     totalInvested, 
     totalInterest: Math.max(0, totalBalance - totalInvested), 
-    growth 
+    growth,
+    monthlyRatePerc: monthlyRate * 100,
+    yieldOnCost: totalInvested > 0 ? (totalBalance / totalInvested) : 0
   };
+};
+
+export const calculateIndependenceNeeded = (monthlyCost: number, yearlyWithdrawalRate: number = 7.2) => {
+  // Regra de retirada (Safe Withdrawal Rate)
+  // Capital = (Custo_Mensal * 12) / Taxa_Retirada_Anual
+  return (monthlyCost * 12) / (yearlyWithdrawalRate / 100);
 };

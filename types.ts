@@ -2,6 +2,7 @@
 export type TransactionType = 'INCOME' | 'EXPENSE';
 export type TransactionStatus = 'PAID' | 'PENDING';
 export type PaymentMethod = 'CASH' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'PIX' | 'TRANSFER';
+export type RecurringFrequency = 'NONE' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 
 export interface Category {
   id: string;
@@ -21,6 +22,8 @@ export interface Transaction {
   status: TransactionStatus;
   paymentMethod: PaymentMethod;
   isRecurring: boolean;
+  frequency?: RecurringFrequency;
+  lastGeneratedDate?: string;
   installments?: number;
   currentInstallment?: number;
 }

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Transaction, Category, PaymentMethod, TransactionType, TransactionStatus } from '../types';
+import { Transaction, Category, PaymentMethod, TransactionType, TransactionStatus, RecurringFrequency } from '../types';
 import { CATEGORIES } from '../constants';
 import { processFinancialStatement } from '../services/gemini';
 import { 
@@ -13,7 +13,9 @@ import {
   Check, 
   Loader2, 
   AlertCircle,
-  ArrowRightLeft
+  ArrowRightLeft,
+  RefreshCcw,
+  Repeat
 } from 'lucide-react';
 
 interface TransactionsProps {
@@ -40,7 +42,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onDele
     categoryId: CATEGORIES.find(c => c.type === 'EXPENSE')?.id || '5',
     status: 'PAID',
     paymentMethod: 'DEBIT_CARD',
-    isRecurring: false
+    isRecurring: false,
+    frequency: 'NONE'
   });
 
   const filtered = transactions.filter(t => {
@@ -57,7 +60,9 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onDele
       setNewTransaction({
         ...newTransaction,
         description: '',
-        amount: 0
+        amount: 0,
+        isRecurring: false,
+        frequency: 'NONE'
       });
     }
   };
@@ -347,6 +352,39 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onDele
                     </select>
                   </div>
                 </div>
+
+                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <RefreshCcw size={16} className="text-slate-400" />
+                      <span className="text-xs font-bold text-slate-700">Lançamento Recorrente</span>
+                    </div>
+                    <div 
+                      onClick={() => setNewTransaction({...newTransaction, isRecurring: !newTransaction.isRecurring})}
+                      className={`w-10 h-5 rounded-full p-0.5 cursor-pointer transition-colors duration-300 ${newTransaction.isRecurring ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                    >
+                      <div className={`w-4 h-4 bg-white rounded-full shadow-lg transition-transform duration-300 transform ${newTransaction.isRecurring ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </div>
+                  </div>
+
+                  {newTransaction.isRecurring && (
+                    <div className="animate-in slide-in-from-top-2 duration-200">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Frequência</label>
+                      <select 
+                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 text-sm"
+                        value={newTransaction.frequency}
+                        onChange={e => setNewTransaction({...newTransaction, frequency: e.target.value as RecurringFrequency})}
+                      >
+                        <option value="WEEKLY">Semanal</option>
+                        <option value="MONTHLY">Mensal</option>
+                        <option value="YEARLY">Anual</option>
+                      </select>
+                      <p className="mt-2 text-[10px] text-slate-400 leading-tight">
+                        Este lançamento será gerado automaticamente a cada período selecionado, partindo da data escolhida.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="pt-4">
@@ -385,8 +423,17 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onAdd, onDele
                         </span>
                       </td>
                       <td className="px-8 py-6">
-                        <div className="font-bold text-slate-800 text-sm">{t.description}</div>
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mt-0.5">{t.status === 'PAID' ? 'Liquidado' : 'Pendente'}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-bold text-slate-800 text-sm">{t.description}</div>
+                          {t.isRecurring && (
+                            <div className="p-1 bg-emerald-50 text-emerald-600 rounded-md" title={`Recorrente: ${t.frequency}`}>
+                              <Repeat size={12} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mt-0.5">
+                          {t.status === 'PAID' ? 'Liquidado' : 'Pendente'}
+                        </div>
                       </td>
                       <td className="px-8 py-6">
                         <span className="flex items-center gap-2.5 px-3 py-1.5 bg-white border border-slate-100 rounded-xl shadow-sm w-fit">
