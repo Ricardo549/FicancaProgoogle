@@ -1,38 +1,55 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Transaction, FinancialGoal } from "../types";
-import { CATEGORIES } from "../constants";
+import { Transaction, FinancialGoal, Category } from "../types";
 
 export const getFinancialInsights = async (
   transactions: Transaction[], 
-  goals: FinancialGoal[]
+  goals: FinancialGoal[],
+  categories: Category[]
 ) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const summary = transactions.map(t => ({
     desc: t.description,
     val: t.amount,
-    cat: t.categoryId,
-    type: t.type
+    cat: categories.find(c => c.id === t.categoryId)?.name || 'Outros',
+    type: t.type,
+    date: t.date
   }));
 
-  const prompt = `Analise os seguintes dados financeiros e forneça 3 dicas práticas de economia e uma previsão de saúde financeira para os próximos 6 meses.
-  Transações (últimas 20): ${JSON.stringify(summary.slice(-20))}
-  Metas: ${JSON.stringify(goals)}
-  Responda em JSON em português do Brasil.`;
+  const prompt = `Você é um consultor financeiro sênior especializado em Wealth Management. 
+  Analise os seguintes dados do cliente e forneça 3 insights estratégicos de economia, 
+  uma análise de risco e uma projeção de saúde financeira.
+  
+  DADOS DO CLIENTE:
+  Transações recentes: ${JSON.stringify(summary.slice(0, 30))}
+  Metas vigentes: ${JSON.stringify(goals)}
+  
+  Responda estritamente no formato JSON em português do Brasil.`;
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
       contents: prompt,
       config: {
+        thinkingConfig: { thinkingBudget: 4000 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            tips: { type: Type.ARRAY, items: { type: Type.STRING } },
-            forecast: { type: Type.STRING },
-            healthScore: { type: Type.NUMBER }
+            tips: { 
+              type: Type.ARRAY, 
+              items: { type: Type.STRING },
+              description: "3 dicas práticas e acionáveis"
+            },
+            forecast: { 
+              type: Type.STRING,
+              description: "Análise narrativa do futuro financeiro"
+            },
+            healthScore: { 
+              type: Type.NUMBER,
+              description: "Pontuação de 0 a 100 da saúde financeira"
+            }
           },
           required: ["tips", "forecast", "healthScore"]
         }
@@ -43,27 +60,34 @@ export const getFinancialInsights = async (
   } catch (error) {
     console.error("Gemini Error:", error);
     return {
-      tips: ["Mantenha um fundo de reserva.", "Evite compras por impulso.", "Revise suas assinaturas mensais."],
-      forecast: "IA temporariamente indisponível para análise profunda.",
-      healthScore: 60
+      tips: [
+        "Mantenha uma reserva de emergência equivalente a 6 meses de custo fixo.",
+        "Automatize seus aportes em investimentos logo após o recebimento do salário.",
+        "Revise taxas bancárias e assinaturas digitais que não são utilizadas."
+      ],
+      forecast: "Sua trajetória atual sugere estabilidade, mas há espaço para otimização em gastos variáveis.",
+      healthScore: 65
     };
   }
 };
 
-export const processFinancialStatement = async (text: string) => {
+export const processFinancialStatement = async (text: string, categories: Category[]) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const categoriesList = CATEGORIES.map(c => ({ id: c.id, name: c.name, type: c.type }));
+  const categoriesList = categories.map(c => ({ id: c.id, name: c.name, type: c.type }));
   
-  const prompt = `Extraia as transações financeiras do seguinte texto (extrato bancário). 
-  Identifique a data (YYYY-MM-DD), descrição, valor (positivo para receita, negativo para despesa) e o tipo (INCOME ou EXPENSE).
-  Mapeie para o ID da categoria mais próxima desta lista: ${JSON.stringify(categoriesList)}.
-  Texto: ${text}`;
+  const prompt = `Extraia transações de extrato bancário. Ignore saldos e textos informativos.
+  Retorne apenas as movimentações financeiras.
+  Categorias permitidas: ${JSON.stringify(categoriesList)}.
+  
+  Texto do extrato:
+  ${text}`;
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
       contents: prompt,
       config: {
+        thinkingConfig: { thinkingBudget: 2000 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.ARRAY,
@@ -74,7 +98,8 @@ export const processFinancialStatement = async (text: string) => {
               amount: { type: Type.NUMBER },
               date: { type: Type.STRING },
               type: { type: Type.STRING, enum: ["INCOME", "EXPENSE"] },
-              categoryId: { type: Type.STRING }
+              categoryId: { type: Type.STRING },
+              notes: { type: Type.STRING }
             },
             required: ["description", "amount", "date", "type", "categoryId"]
           }
@@ -85,6 +110,6 @@ export const processFinancialStatement = async (text: string) => {
     return JSON.parse(response.text);
   } catch (error) {
     console.error("Gemini Error:", error);
-    throw new Error("Falha ao processar extrato.");
+    throw new Error("Erro na extração de dados via IA.");
   }
 };

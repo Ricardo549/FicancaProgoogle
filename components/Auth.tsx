@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Mail, Lock, Chrome, Facebook, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, Chrome, Facebook, ArrowRight, Sparkles, ShieldCheck, User, Star } from 'lucide-react';
 
 interface AuthProps {
   onLogin: (user: any) => void;
@@ -8,19 +8,19 @@ interface AuthProps {
 
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState<'free' | 'pro'>('free');
 
   const handleSocialLogin = (provider: string) => {
-    // Simulating social login
     onLogin({ 
       name: `Usuário ${provider}`, 
       email: 'user@example.com', 
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider}` 
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider}`,
+      plan: selectedPlan 
     });
   };
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Decorative Background Elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-600/20 blur-[120px] rounded-full"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 blur-[120px] rounded-full"></div>
 
@@ -35,60 +35,52 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           <p className="text-slate-400 text-sm font-medium">O controle total do seu patrimônio começa aqui.</p>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl">
-          <div className="flex gap-4 mb-8 p-1 bg-white/5 rounded-2xl">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl space-y-6">
+          <div className="flex gap-4 p-1 bg-white/5 rounded-2xl">
             <button 
-              onClick={() => setIsLogin(true)}
-              className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isLogin ? 'bg-white text-slate-900 shadow-lg' : 'text-slate-400 hover:text-white'}`}
+              onClick={() => setSelectedPlan('free')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedPlan === 'free' ? 'bg-white text-slate-900 shadow-lg' : 'text-slate-400 hover:text-white'}`}
             >
-              Entrar
+              <User size={14}/> Plano Free
             </button>
             <button 
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${!isLogin ? 'bg-white text-slate-900 shadow-lg' : 'text-slate-400 hover:text-white'}`}
+              onClick={() => setSelectedPlan('pro')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedPlan === 'pro' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
             >
-              Cadastrar
+              <Star size={14} fill="currentColor"/> Plano Pro
             </button>
           </div>
 
-          <div className="space-y-4 mb-8">
+          <div className="space-y-4">
             <button 
               onClick={() => handleSocialLogin('Google')}
-              className="w-full flex items-center justify-center gap-3 py-4 bg-white hover:bg-slate-50 text-slate-900 font-bold rounded-2xl transition-all active:scale-95"
+              className="w-full flex items-center justify-center gap-3 py-4 bg-white hover:bg-slate-50 text-slate-900 font-bold rounded-2xl transition-all active:scale-95 shadow-lg"
             >
               <Chrome size={20} className="text-rose-500" />
               {isLogin ? 'Entrar com Google' : 'Cadastrar com Google'}
             </button>
             <button 
               onClick={() => handleSocialLogin('Facebook')}
-              className="w-full flex items-center justify-center gap-3 py-4 bg-[#1877F2] hover:bg-[#166fe5] text-white font-bold rounded-2xl transition-all active:scale-95"
+              className="w-full flex items-center justify-center gap-3 py-4 bg-[#1877F2] hover:bg-[#166fe5] text-white font-bold rounded-2xl transition-all active:scale-95 shadow-lg"
             >
               <Facebook size={20} />
               {isLogin ? 'Entrar com Facebook' : 'Cadastrar com Facebook'}
             </button>
           </div>
 
-          <div className="relative mb-8 text-center">
+          <div className="relative text-center">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
-            <span className="relative bg-slate-900 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Ou use seu e-mail</span>
+            <span className="relative bg-slate-950 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Ou use e-mail</span>
           </div>
 
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSocialLogin('Email'); }}>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-              <input 
-                type="email" 
-                placeholder="E-mail" 
-                className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-              />
+              <input type="email" placeholder="E-mail" className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all"/>
             </div>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-              <input 
-                type="password" 
-                placeholder="Senha" 
-                className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-              />
+              <input type="password" placeholder="Senha" className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all"/>
             </div>
             <button className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2 group">
               {isLogin ? 'Acessar Conta' : 'Criar minha Conta'}

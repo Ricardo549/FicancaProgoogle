@@ -1,36 +1,31 @@
 
 import React, { useState, useMemo } from 'react';
 import { Investment } from '../types';
-import { calculateCompoundInterest, calculateIndependenceNeeded } from '../utils/financeMath';
+import { calculateCompoundInterest } from '../utils/financeMath';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, LineChart, Line, Legend
+  LineChart, Line, Legend
 } from 'recharts';
 import { 
-  TrendingUp, Plus, PieChart as PieIcon, Zap, Shield, Target, Clock, 
-  Percent, DollarSign, Calendar, Trash2, Info, ArrowRight, Activity,
-  ArrowUpRight, Scale, Calculator, Landmark, ListChecks, HeartPulse
+  TrendingUp, Plus, Zap, Shield, Target, 
+  Calculator, ListChecks, Briefcase, Trash2, Activity,
+  LineChart as LineChartIcon, Info, ExternalLink
 } from 'lucide-react';
 
 interface InvestmentsProps {
   investments: Investment[];
   setInvestments: React.Dispatch<React.SetStateAction<Investment[]>>;
+  userPlan?: 'free' | 'pro';
 }
-
-const SCENARIOS = [
-  { name: 'Conservador', rate: 8.5, color: '#94a3b8', icon: <Shield size={14} />, desc: 'Selic / CDB' },
-  { name: 'Moderado', rate: 11.5, color: '#3b82f6', icon: <Target size={14} />, desc: 'FIIs / IPCA+' },
-  { name: 'Arrojado', rate: 16.0, color: '#10b981', icon: <Zap size={14} />, desc: 'Ações / Cripto' },
-];
 
 const EvolutionTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="bg-white p-5 rounded-[2rem] shadow-2xl border border-slate-100 min-w-[260px] animate-in fade-in zoom-in duration-200">
-        <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-50">
+      <div className="bg-white dark:bg-slate-800 p-5 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-700 min-w-[260px] animate-in fade-in zoom-in duration-200">
+        <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-50 dark:border-slate-700">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tempo Decorrido</p>
-          <span className="text-[11px] font-black text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+          <span className="text-[11px] font-black text-slate-800 dark:text-white bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-600">
             {data.year} Anos
           </span>
         </div>
@@ -38,28 +33,28 @@ const EvolutionTooltip = ({ active, payload }: any) => {
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-[11px] font-bold text-slate-500">Patrimônio</span>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Valor Atual</span>
             </div>
-            <span className="text-sm font-black text-slate-800">
+            <span className="text-sm font-black text-slate-800 dark:text-white">
               R$ {data.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </span>
           </div>
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-slate-300" />
-              <span className="text-[11px] font-bold text-slate-500">Investido</span>
+              <div className="w-2 h-2 rounded-full bg-blue-400" />
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Capital Investido</span>
             </div>
-            <span className="text-sm font-black text-slate-600">
+            <span className="text-sm font-black text-slate-600 dark:text-slate-300">
               R$ {data.invested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </span>
           </div>
-          <div className="flex justify-between items-center pt-2 border-t border-slate-50">
+          <div className="flex justify-between items-center pt-2 border-t border-slate-50 dark:border-slate-700">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-blue-500" />
-              <span className="text-[11px] font-bold text-slate-500">Lucro (Juros)</span>
+              <div className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Juros Acumulados</span>
             </div>
-            <span className="text-sm font-black text-blue-600">
-              R$ {(data.amount - data.invested).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            <span className="text-sm font-black text-amber-600 dark:text-amber-400">
+              R$ {data.interest.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </span>
           </div>
         </div>
@@ -69,7 +64,7 @@ const EvolutionTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments }) => {
+const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments, userPlan = 'free' }) => {
   const [params, setParams] = useState({
     initial: 10000,
     monthly: 500,
@@ -87,33 +82,10 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments }
     );
   }, [params]);
 
-  const independenceNeeded = useMemo(() => {
-    return calculateIndependenceNeeded(params.targetMonthlyIncome);
-  }, [params.targetMonthlyIncome]);
-
-  const independenceProgress = Math.min(100, (projection.total / independenceNeeded) * 100);
-
-  const multiScenarioData = useMemo(() => {
-    const results = SCENARIOS.map(s => calculateCompoundInterest(params.initial, params.monthly, s.rate, params.years));
-    const chartData = results[0].growth.filter((_, i) => i % 6 === 0).map((point, idx) => {
-      const dataPoint: any = { year: point.year };
-      SCENARIOS.forEach((s, sIdx) => {
-        dataPoint[s.name] = results[sIdx].growth[idx * 6]?.amount || results[sIdx].total;
-      });
-      return dataPoint;
-    });
-    return chartData;
-  }, [params.initial, params.monthly, params.years]);
-
-  const compositionData = [
-    { name: 'Investido', value: projection.totalInvested, color: '#cbd5e1' },
-    { name: 'Juros', value: projection.totalInterest, color: '#10b981' },
-  ];
-
   const handleAddGoal = () => {
     const newInv: Investment = {
       id: Date.now().toString(),
-      name: `Simulação ${params.years} anos @ ${params.rate}%`,
+      name: `Meta ${params.years} anos @ ${params.rate}%`,
       type: 'FUNDS',
       initialAmount: params.initial,
       currentAmount: projection.total,
@@ -123,32 +95,40 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments }
     setInvestments(prev => [newInv, ...prev]);
   };
 
+  const removeInvestment = (id: string) => {
+    setInvestments(prev => prev.filter(inv => inv.id !== id));
+  };
+
   return (
-    <div className="space-y-10 animate-in fade-in duration-700">
+    <div className="space-y-12 animate-in fade-in duration-700 pb-32 lg:pb-0">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-black text-slate-800 tracking-tight">Laboratório de Investimentos</h2>
-          <p className="text-slate-500 font-medium tracking-tight">Projete seu futuro financeiro com precisão matemática.</p>
+          <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">Investimentos</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">Simule cenários e planeje sua liberdade financeira.</p>
         </div>
+        {userPlan === 'pro' && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full text-[10px] font-black uppercase border border-emerald-100 dark:border-emerald-800">
+            <Shield size={12} /> Experiência Pro Ativa
+          </div>
+        )}
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Painel de Controle */}
         <div className="lg:col-span-4 space-y-6">
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-8 relative overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm space-y-8 relative overflow-hidden">
             <div className="flex items-center gap-3 relative z-10">
-              <div className="p-3 bg-slate-900 text-white rounded-2xl">
+              <div className="p-3 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl">
                 <Calculator size={24}/>
               </div>
-              <h3 className="font-bold text-slate-800 text-lg">Parâmetros do Simulado</h3>
+              <h3 className="font-bold text-slate-800 dark:text-white text-lg">Simulador FIRE</h3>
             </div>
 
             <div className="space-y-8 relative z-10">
-              <div className="group">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Investimento Inicial (R$)</label>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 block">Investimento Inicial (R$)</label>
                 <input 
                   type="number" 
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-700 transition-all"
+                  className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 outline-none font-black text-slate-700 dark:text-white transition-all"
                   value={params.initial}
                   onChange={e => setParams({...params, initial: Number(e.target.value)})}
                 />
@@ -156,216 +136,192 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments }
 
               <div>
                 <div className="flex justify-between items-center mb-3">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aporte Mensal (R$)</label>
-                  <span className="text-emerald-600 font-black text-xs">R$ {params.monthly.toLocaleString()}</span>
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Aporte Mensal (R$)</label>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-black text-xs">R$ {params.monthly.toLocaleString()}</span>
                 </div>
                 <input 
                   type="range" min="0" max="20000" step="100"
-                  className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                  className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-600"
                   value={params.monthly}
                   onChange={e => setParams({...params, monthly: Number(e.target.value)})}
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-6">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                      <Clock size={12} className="text-slate-500" /> Prazo (Anos)
-                    </label>
-                    <span className="text-slate-800 font-black text-xs">{params.years} anos</span>
-                  </div>
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 block">Prazo (Anos)</label>
                   <input 
-                    type="range" min="1" max="50" step="1"
-                    className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-slate-800"
+                    type="number" 
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-slate-700 dark:text-white"
                     value={params.years}
                     onChange={e => setParams({...params, years: Number(e.target.value)})}
                   />
-                  <input 
-                    type="number"
-                    className="mt-3 w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600"
-                    value={params.years}
-                    onChange={e => setParams({...params, years: Math.max(1, Number(e.target.value))})}
-                  />
                 </div>
-
                 <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                      <Percent size={12} className="text-blue-500" /> Taxa de Juros Anual
-                    </label>
-                    <span className="text-blue-600 font-black text-xs">{params.rate}% a.a.</span>
-                  </div>
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 block">Taxa (% a.a.)</label>
                   <input 
-                    type="range" min="0" max="30" step="0.1"
-                    className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    type="number" step="0.1"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-slate-700 dark:text-white"
                     value={params.rate}
                     onChange={e => setParams({...params, rate: Number(e.target.value)})}
                   />
-                  <div className="relative mt-3">
-                    <input 
-                      type="number" step="0.1"
-                      className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500"
-                      value={params.rate}
-                      onChange={e => setParams({...params, rate: Number(e.target.value)})}
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-300 font-bold">%</span>
-                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="pt-6 border-t border-slate-100">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block text-center">Referência de Perfil</label>
-              <div className="grid grid-cols-3 gap-2">
-                {SCENARIOS.map(s => (
-                  <button 
-                    key={s.name}
-                    onClick={() => setParams({...params, rate: s.rate})}
-                    className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${params.rate === s.rate ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-slate-100 text-slate-400 hover:bg-slate-50'}`}
-                  >
-                    <span className="mb-1">{s.icon}</span>
-                    <span className="text-[9px] font-black uppercase tracking-tighter">{s.name}</span>
-                    <span className="text-[10px] font-bold">{s.rate}%</span>
-                  </button>
-                ))}
-              </div>
+              <button 
+                onClick={handleAddGoal}
+                className="w-full py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-3 active:scale-95"
+              >
+                <Plus size={18}/> Fixar como Meta
+              </button>
             </div>
           </div>
 
-          <div className="bg-indigo-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
-            <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-125 transition-transform duration-700">
-              <HeartPulse size={120} />
-            </div>
-            <h4 className="text-indigo-300 text-[10px] font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-              <Zap size={14} className="text-amber-400" /> Aceleração FIRE
-            </h4>
-            <div className="space-y-4 relative z-10">
-              <div>
-                <p className="text-[10px] text-indigo-300 uppercase font-black tracking-widest mb-1">Poder Multiplicador</p>
-                <p className="text-3xl font-black">{projection.yieldOnCost.toFixed(2)}x <span className="text-sm font-medium text-indigo-400 ml-1">o capital</span></p>
+          {/* Ad Slot for Free Users */}
+          {userPlan === 'free' && (
+            <div className="p-6 bg-slate-100 dark:bg-slate-800/50 rounded-[2.5rem] border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-center gap-4">
+              <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Patrocinado por Google AdSense</div>
+              <div className="w-full h-40 bg-slate-200 dark:bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                <div className="text-slate-400 font-bold text-xs">Publicidade Dinâmica</div>
               </div>
-              <p className="text-[10px] text-indigo-300 leading-relaxed font-medium italic">
-                Sua taxa de <b>{params.rate}%</b> gera um rendimento mensal médio de <b>{projection.monthlyRatePerc.toFixed(3)}%</b>.
-              </p>
+              <button className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:underline flex items-center gap-1">
+                Remover anúncios com Pro <ExternalLink size={10}/>
+              </button>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Visualização de Resultados */}
         <div className="lg:col-span-8 space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm flex flex-col justify-between relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-8 text-emerald-50/50 -z-0">
-                  <TrendingUp size={160} />
-               </div>
-               <div className="relative z-10">
-                  <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mb-2">Estimativa Total em {params.years} anos</p>
-                  <h3 className="text-5xl font-black text-slate-900 tracking-tighter mb-8">
-                    <span className="text-2xl font-medium text-slate-300 mr-2">R$</span>
-                    {projection.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
-                  </h3>
-                  
-                  <div className="space-y-4 pt-8 border-t border-slate-50">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-slate-500">Capital Investido</span>
-                      <span className="text-sm font-black text-slate-700">R$ {projection.totalInvested.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-slate-500">Lucro Acumulado</span>
-                      <span className="text-sm font-black text-emerald-600">R$ {projection.totalInterest.toLocaleString()}</span>
-                    </div>
-                  </div>
-
-                  <button 
-                    onClick={handleAddGoal}
-                    className="w-full mt-10 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl transition-all shadow-xl shadow-emerald-100 flex items-center justify-center gap-2 active:scale-95"
-                  >
-                    <Target size={18} /> Fixar Meta de Projeção
-                  </button>
-               </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Montante Final Estimado</p>
+                <h3 className="text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tighter">
+                  R$ {projection.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 mt-4 uppercase tracking-widest">
+                <Activity size={14}/> {params.years} anos de acumulação
+              </div>
             </div>
 
-            <div className="bg-white p-8 rounded-[3rem] border border-slate-200 shadow-sm flex flex-col items-center justify-center">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Divisão do Patrimônio Final</h4>
-              <div className="h-56 w-full relative">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={compositionData}
-                      cx="50%" cy="50%"
-                      innerRadius={65}
-                      outerRadius={85}
-                      paddingAngle={8}
-                      dataKey="value"
-                    >
-                      {compositionData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(val: any) => `R$ ${val.toLocaleString()}`}
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <p className="text-[10px] font-black text-slate-400 uppercase">Juros</p>
-                  <p className="text-xl font-black text-emerald-600">{((projection.totalInterest / projection.total) * 100).toFixed(0)}%</p>
-                </div>
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Rendimento Passivo Estimado</p>
+                <h3 className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-tighter">
+                  R$ {(projection.total * (params.rate/100/12)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}/mês
+                </h3>
               </div>
-              <div className="flex gap-6 mt-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Aportes</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Juros</span>
-                </div>
-              </div>
+              <p className="text-[10px] font-bold text-slate-400 mt-4 uppercase tracking-widest italic">Baseado na taxa de {params.rate}% a.a.</p>
             </div>
           </div>
 
-          <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-10">
-              <div>
-                <h4 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                  <Activity size={20} className="text-emerald-500" /> Curva de Crescimento Composto
-                </h4>
-                <p className="text-xs text-slate-400 mt-1">Simulação temporal de <b>{params.years} anos</b> a <b>{params.rate}% a.a.</b></p>
-              </div>
-            </div>
-            <div className="h-80 w-full">
+          {/* Gráfico de Área (Crescimento) */}
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h4 className="text-sm font-black dark:text-white uppercase tracking-widest mb-8 flex items-center gap-2">
+              <TrendingUp size={18} className="text-emerald-500" /> Curva de Crescimento Patrimonial
+            </h4>
+            <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={projection.growth.filter((_, i) => i % 6 === 0)}>
                   <defs>
-                    <linearGradient id="colorPat" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.15}/>
+                    <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis 
-                    dataKey="year" 
-                    axisLine={false} tickLine={false} 
-                    tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}}
-                    label={{ value: 'Anos', position: 'bottom', offset: -10, fontSize: 10, fill: '#cbd5e1' }}
-                  />
-                  <YAxis 
-                    axisLine={false} tickLine={false} 
-                    tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}}
-                    tickFormatter={(val) => `R$ ${val >= 1000 ? (val/1000).toFixed(0) + 'k' : val}`}
-                  />
+                  <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} tickFormatter={(val) => `R$ ${val >= 1000 ? (val/1000).toFixed(0) + 'k' : val}`} />
                   <Tooltip content={<EvolutionTooltip />} />
-                  <Area type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorPat)" />
-                  <Area type="monotone" dataKey="invested" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="5 5" fill="transparent" />
+                  <Area type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorAmount)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
+
+          {/* NOVO GRÁFICO: Evolução Mensal LineChart */}
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h4 className="text-sm font-black dark:text-white uppercase tracking-widest mb-8 flex items-center gap-2">
+              <LineChartIcon size={18} className="text-blue-500" /> Evolução: Valor Atual vs Investido
+            </h4>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={projection.growth.filter((_, i) => i % 6 === 0)}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} tickFormatter={(val) => `R$ ${val >= 1000 ? (val/1000).toFixed(0) + 'k' : val}`} />
+                  <Tooltip content={<EvolutionTooltip />} />
+                  <Legend 
+                    verticalAlign="top" 
+                    height={36} 
+                    iconType="circle"
+                    formatter={(value) => <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{value === 'amount' ? 'Valor Acumulado' : 'Capital Investido'}</span>}
+                  />
+                  <Line type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="invested" stroke="#3b82f6" strokeWidth={3} strokeDasharray="5 5" dot={{ r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-6 flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/20">
+              <Info className="text-blue-500 shrink-0" size={16}/>
+              <p className="text-[10px] font-medium text-blue-800 dark:text-blue-200/60 leading-relaxed">
+                A linha pontilhada azul representa o capital retirado do seu bolso. A diferença entre a linha verde e a azul é o "Poder do Tempo": juros compostos trabalhando por você.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
+
+      <section className="space-y-6">
+        <div className="flex items-center gap-3">
+          <ListChecks className="text-emerald-500" size={24}/>
+          <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-widest">Estratégias Salvas</h3>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {investments.map(inv => (
+            <div key={inv.id} className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-xl transition-all relative overflow-hidden">
+               <div className="flex justify-between items-start mb-6">
+                 <div className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-xl">
+                   <Briefcase size={20}/>
+                 </div>
+                 <button 
+                  onClick={() => removeInvestment(inv.id)}
+                  className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                 >
+                   <Trash2 size={16}/>
+                 </button>
+               </div>
+               <h4 className="font-black text-slate-800 dark:text-white mb-1 truncate">{inv.name}</h4>
+               <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-6">Projeção Concluída</p>
+               
+               <div className="space-y-3">
+                 <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Aporte</span>
+                    <span className="text-xs font-black dark:text-white">R$ {inv.monthlyAport}/mês</span>
+                 </div>
+                 <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Taxa</span>
+                    <span className="text-xs font-black dark:text-white">{inv.expectedReturn}% a.a.</span>
+                 </div>
+                 <div className="pt-3 border-t border-slate-50 dark:border-slate-800 flex justify-between items-center">
+                    <span className="text-[10px] font-black text-slate-400 uppercase">Patrimônio</span>
+                    <span className="text-sm font-black text-emerald-600">R$ {inv.currentAmount.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</span>
+                 </div>
+               </div>
+            </div>
+          ))}
+          
+          {investments.length === 0 && (
+            <div className="col-span-full py-16 bg-slate-50/50 dark:bg-slate-900/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem] flex flex-col items-center justify-center text-center px-8">
+              <TrendingUp size={32} className="text-slate-300 mb-4" />
+              <p className="text-sm font-bold text-slate-400">Nenhuma estratégia fixada ainda.</p>
+              <p className="text-[10px] font-medium text-slate-400 mt-1">Simule uma projeção acima e clique em "Fixar como Meta".</p>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 };

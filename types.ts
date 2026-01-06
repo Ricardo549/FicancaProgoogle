@@ -26,6 +26,7 @@ export interface Transaction {
   lastGeneratedDate?: string;
   installments?: number;
   currentInstallment?: number;
+  notes?: string;
 }
 
 export interface Account {
