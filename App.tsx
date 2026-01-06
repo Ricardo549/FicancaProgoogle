@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, History, Target, TrendingUp, Calculator, Settings as SettingsIcon,
-  LogOut, Menu, X, PlusCircle, ChevronRight, User as UserIcon, Shield, Star
+  LogOut, Menu, X, PlusCircle, ChevronRight, User as UserIcon, Shield, Star, Lock
 } from 'lucide-react';
 import { Transaction, Account, FinancialGoal, Investment, RecurringFrequency, Category } from './types';
 import { INITIAL_ACCOUNTS, CATEGORIES as INITIAL_CATEGORIES } from './constants';
@@ -14,8 +14,11 @@ import CreditSimulator from './components/CreditSimulator';
 import Auth from './components/Auth';
 import Settings from './components/Settings';
 import PrivacyPolicy from './components/PrivacyPolicy';
+import Admin from './components/Admin';
 
-type View = 'dashboard' | 'transactions' | 'planning' | 'investments' | 'credit' | 'settings' | 'privacy';
+type View = 'dashboard' | 'transactions' | 'planning' | 'investments' | 'credit' | 'settings' | 'privacy' | 'admin';
+
+const ADMIN_EMAIL = 'ricardobm647@gmail.com';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>('dashboard');
@@ -62,6 +65,7 @@ const App: React.FC = () => {
   if (!user) return <Auth onLogin={setUser} />;
 
   const userPlan = user.plan || 'free';
+  const isAdmin = user.email === ADMIN_EMAIL;
 
   const menu = [
     { id: 'dashboard', label: 'Painel Geral', icon: <LayoutDashboard size={20}/> },
@@ -73,6 +77,11 @@ const App: React.FC = () => {
     { id: 'privacy', label: 'Privacidade', icon: <Shield size={20}/> },
   ];
 
+  // Injeção exclusiva do menu Admin
+  if (isAdmin) {
+    menu.push({ id: 'admin', label: 'Administração', icon: <Lock size={20}/> });
+  }
+
   const renderContent = () => {
     switch(activeView) {
       case 'dashboard': return <Dashboard transactions={transactions} goals={goals} accounts={INITIAL_ACCOUNTS} categories={categories} userPlan={userPlan} />;
@@ -82,6 +91,12 @@ const App: React.FC = () => {
       case 'credit': return <CreditSimulator />;
       case 'settings': return <Settings user={user} setUser={setUser} config={config} setConfig={setConfig} categories={categories} setCategories={setCategories} navigateToPrivacy={() => setActiveView('privacy')} />;
       case 'privacy': return <PrivacyPolicy onBack={() => setActiveView('dashboard')} />;
+      case 'admin': 
+        if (!isAdmin) {
+            setActiveView('dashboard');
+            return null;
+        }
+        return <Admin />;
       default: return null;
     }
   };
@@ -104,7 +119,7 @@ const App: React.FC = () => {
             <button 
               key={item.id} 
               onClick={() => setActiveView(item.id as View)} 
-              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all duration-200 group ${activeView === item.id ? 'bg-emerald-600 text-white shadow-2xl shadow-emerald-100 dark:shadow-emerald-900/10' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all duration-200 group ${activeView === item.id ? (item.id === 'admin' ? 'bg-amber-500 shadow-amber-200 dark:shadow-amber-900/10' : 'bg-emerald-600 shadow-emerald-100 dark:shadow-emerald-900/10') + ' text-white shadow-2xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
             >
               <span className={`transition-transform duration-300 ${activeView === item.id ? 'scale-110' : 'group-hover:scale-110'}`}>
                 {item.icon}
@@ -142,11 +157,11 @@ const App: React.FC = () => {
             </button>
             <div className="flex flex-col">
               <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">
-                {activeView === 'privacy' ? 'Privacidade' : (menu.find(m => m.id === activeView)?.label.split(' ')[0] || 'Visão')}
+                {activeView === 'admin' ? 'Administração Global' : (activeView === 'privacy' ? 'Privacidade' : (menu.find(m => m.id === activeView)?.label.split(' ')[0] || 'Visão'))}
               </h2>
               <div className="flex items-center gap-1">
-                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                 <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Sincronizado</p>
+                 <div className={`w-1.5 h-1.5 rounded-full ${isAdmin ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
+                 <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{isAdmin ? 'Acesso Root Ativo' : 'Sincronizado'}</p>
               </div>
             </div>
           </div>
@@ -154,7 +169,12 @@ const App: React.FC = () => {
             <div className="hidden sm:block text-right">
               <p className="text-sm font-black text-slate-800 dark:text-white leading-none">{user.name}</p>
               <div className="flex items-center justify-end gap-1 mt-1">
-                {userPlan === 'pro' ? (
+                {isAdmin ? (
+                  <div className="flex items-center gap-1">
+                    <Lock size={10} className="text-amber-500" />
+                    <p className="text-[9px] font-black text-amber-600 uppercase tracking-[0.2em]">Global Admin</p>
+                  </div>
+                ) : userPlan === 'pro' ? (
                   <div className="flex items-center gap-1">
                     <Shield size={10} className="text-emerald-500" />
                     <p className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.2em]">Premium Access</p>
@@ -166,7 +186,7 @@ const App: React.FC = () => {
             </div>
             <div className="relative cursor-pointer group" onClick={() => setActiveView('settings')}>
               <img src={user.avatar} className="w-12 h-12 rounded-2xl border-2 border-white dark:border-slate-800 shadow-xl group-hover:ring-4 group-hover:ring-emerald-500/10 transition-all object-cover" alt="User" />
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full"></div>
+              <div className={`absolute -bottom-1 -right-1 w-4 h-4 ${isAdmin ? 'bg-amber-500' : 'bg-emerald-500'} border-2 border-white dark:border-slate-800 rounded-full shadow-lg`}></div>
             </div>
           </div>
         </header>

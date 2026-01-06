@@ -9,11 +9,23 @@ interface AuthProps {
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'pro'>('free');
+  const [email, setEmail] = useState('');
 
   const handleSocialLogin = (provider: string) => {
+    // Se o e-mail for o do Ricardo, forçar o nome e dados dele
+    if (email === 'ricardobm647@gmail.com') {
+      onLogin({ 
+        name: 'Ricardo Costa', 
+        email: 'ricardobm647@gmail.com', 
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ricardo',
+        plan: 'pro' 
+      });
+      return;
+    }
+
     onLogin({ 
       name: `Usuário ${provider}`, 
-      email: 'user@example.com', 
+      email: email || 'user@example.com', 
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider}`,
       plan: selectedPlan 
     });
@@ -59,13 +71,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               <Chrome size={20} className="text-rose-500" />
               {isLogin ? 'Entrar com Google' : 'Cadastrar com Google'}
             </button>
-            <button 
-              onClick={() => handleSocialLogin('Facebook')}
-              className="w-full flex items-center justify-center gap-3 py-4 bg-[#1877F2] hover:bg-[#166fe5] text-white font-bold rounded-2xl transition-all active:scale-95 shadow-lg"
-            >
-              <Facebook size={20} />
-              {isLogin ? 'Entrar com Facebook' : 'Cadastrar com Facebook'}
-            </button>
           </div>
 
           <div className="relative text-center">
@@ -76,7 +81,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSocialLogin('Email'); }}>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-              <input type="email" placeholder="E-mail" className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all"/>
+              <input 
+                type="email" 
+                placeholder="E-mail" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+              />
             </div>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
