@@ -23,22 +23,27 @@ import {
   Filter,
   Edit2,
   StickyNote,
-  Clock
+  Clock,
+  Tag,
+  Palette
 } from 'lucide-react';
 
 interface TransactionsProps {
   transactions: Transaction[];
-  // Added categories to props to match App.tsx and fix the Gemini service call
   categories: Category[];
+  setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
   onAdd: (t: Omit<Transaction, 'id'>) => void;
   onUpdate: (t: Transaction) => void;
   onDelete: (id: string) => void;
 }
 
-const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, onAdd, onUpdate, onDelete }) => {
+const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+
+const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, setCategories, onAdd, onUpdate, onDelete }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [importText, setImportText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingTransactions, setPendingTransactions] = useState<Omit<Transaction, 'id'>[]>([]);
@@ -52,7 +57,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, o
     amount: 0,
     date: new Date().toISOString().split('T')[0],
     type: 'EXPENSE',
-    categoryId: categories.find(c => c.type === 'EXPENSE')?.id || '5',
+    categoryId: '',
     status: 'PAID',
     paymentMethod: 'DEBIT_CARD',
     isRecurring: false,
@@ -61,6 +66,14 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, o
   };
 
   const [formData, setFormData] = useState<Partial<Transaction>>(initialTransactionState);
+
+  // Estado para nova categoria rápida
+  const [newCatData, setNewCatData] = useState<Partial<Category>>({
+    name: '',
+    icon: '📂',
+    color: '#10b981',
+    type: 'EXPENSE'
+  });
 
   const filtered = transactions.filter(t => {
     const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -77,14 +90,17 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, o
   };
 
   const handleOpenNew = () => {
-    setFormData(initialTransactionState);
+    setFormData({
+      ...initialTransactionState,
+      categoryId: categories.find(c => c.type === 'EXPENSE')?.id || ''
+    });
     setEditingTransactionId(null);
     setShowAddForm(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.description && formData.amount) {
+    if (formData.description && formData.amount && formData.categoryId) {
       const finalData = {
         ...formData,
         frequency: formData.isRecurring ? formData.frequency : 'NONE'
@@ -100,11 +116,25 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, o
     }
   };
 
+  const handleAddQuickCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newCatData.name && newCatData.icon) {
+      const newCategory: Category = {
+        ...newCatData as Category,
+        id: Date.now().toString(),
+        type: formData.type as TransactionType
+      };
+      setCategories(prev => [...prev, newCategory]);
+      setFormData(prev => ({ ...prev, categoryId: newCategory.id }));
+      setShowAddCategoryModal(false);
+      setNewCatData({ name: '', icon: '📂', color: '#10b981', type: 'EXPENSE' });
+    }
+  };
+
   const handleImportStatement = async () => {
     if (!importText.trim()) return;
     setIsProcessing(true);
     try {
-      // Fix: Passed categories as the second argument to processFinancialStatement
       const extracted = await processFinancialStatement(importText, categories);
       const mapped = extracted.map((t: any) => ({
         ...t,
@@ -130,11 +160,11 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, o
     setShowImportModal(false);
   };
 
-  // Filtrar categorias baseadas no tipo selecionado para o dropdown de filtro
   const availableCategoriesForFilter = categories.filter(c => filterType === 'ALL' || c.type === filterType);
+  const categoriesForCurrentType = categories.filter(c => c.type === (formData.type || 'EXPENSE'));
 
   return (
-    <div className="space-y-6 pb-20 lg:pb-0">
+    <div className="space-y-6 pb-20 lg:pb-0 animate-in fade-in duration-500">
       {/* Search & Actions Bar */}
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="relative flex-1">
@@ -142,7 +172,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, o
           <input 
             type="text" 
             placeholder="Buscar lançamentos ou notas..." 
-            className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-[1.25rem] focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all shadow-sm font-medium text-sm"
+            className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.25rem] focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all shadow-sm font-medium text-sm dark:text-white"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -150,11 +180,11 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, o
         
         <div className="flex flex-wrap lg:flex-nowrap gap-2 w-full lg:w-auto">
           <select 
-            className="flex-1 lg:flex-none px-4 py-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none text-[10px] font-black uppercase tracking-widest shadow-sm appearance-none cursor-pointer min-w-[120px]"
+            className="flex-1 lg:flex-none px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.25rem] outline-none text-[10px] font-black uppercase tracking-widest shadow-sm appearance-none cursor-pointer min-w-[120px] dark:text-white"
             value={filterType}
             onChange={(e) => {
               setFilterType(e.target.value as any);
-              setFilterCategory('ALL'); // Resetar categoria ao mudar tipo
+              setFilterCategory('ALL');
             }}
           >
             <option value="ALL">Tipos</option>
@@ -163,19 +193,19 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, o
           </select>
 
           <select 
-            className="flex-1 lg:flex-none px-4 py-4 bg-white border border-slate-200 rounded-[1.25rem] outline-none text-[10px] font-black uppercase tracking-widest shadow-sm appearance-none cursor-pointer min-w-[150px]"
+            className="flex-1 lg:flex-none px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.25rem] outline-none text-[10px] font-black uppercase tracking-widest shadow-sm appearance-none cursor-pointer min-w-[150px] dark:text-white"
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
           >
             <option value="ALL">Categorias</option>
             {availableCategoriesForFilter.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
+              <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
             ))}
           </select>
 
           <button 
             onClick={() => setShowImportModal(true)}
-            className="p-4 bg-slate-900 text-white rounded-[1.25rem] hover:bg-slate-800 transition-all shadow-lg active:scale-95 flex items-center justify-center"
+            className="p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-[1.25rem] hover:bg-slate-800 dark:hover:bg-slate-700 transition-all shadow-lg active:scale-95 flex items-center justify-center"
             title="Importar Extrato"
           >
             <Sparkles size={20} />
@@ -190,297 +220,314 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, o
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="space-y-4">
-        {/* Mobile View: Cards (Hidden on Desktop) */}
-        <div className="grid grid-cols-1 gap-4 lg:hidden">
-          {filtered.length > 0 ? (
-            filtered.map((t) => {
-              const category = categories.find(c => c.id === t.categoryId);
-              return (
-                <div key={t.id} className="bg-white p-5 rounded-[1.5rem] border border-slate-200 shadow-sm flex flex-col gap-3 group active:scale-[0.98] transition-all">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="text-2xl w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100">
-                        {category?.icon}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-slate-800 text-sm leading-tight">{t.description}</p>
-                          {t.isRecurring && <Repeat size={12} className="text-emerald-500" />}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            {new Date(t.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                          </span>
-                          <span className="w-1 h-1 bg-slate-200 rounded-full" />
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.paymentMethod.replace('_', ' ')}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right flex flex-col items-end gap-1">
-                      <p className={`font-black text-sm ${t.type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {t.type === 'INCOME' ? '+' : '-'} R$ {t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {t.notes && (
-                    <div className="px-3 py-2 bg-slate-50 rounded-xl flex items-start gap-2 border border-slate-100">
-                       <StickyNote size={12} className="text-slate-400 mt-0.5 shrink-0" />
-                       <p className="text-[10px] font-medium text-slate-500 italic leading-tight line-clamp-2">{t.notes}</p>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-50">
-                      <button onClick={() => handleEdit(t)} className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-emerald-600 transition-colors">
-                          <Edit2 size={12} /> Editar
-                      </button>
-                      <button onClick={() => onDelete(t.id)} className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-600 transition-colors">
-                          <Trash2 size={12} /> Excluir
-                      </button>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="py-20 text-center bg-white rounded-[2.5rem] border border-dashed border-slate-200">
-                <Search className="mx-auto text-slate-200 mb-4" size={48} />
-                <p className="text-slate-400 font-bold">Nenhum lançamento encontrado</p>
-            </div>
-          )}
-        </div>
-
-        {/* Desktop View: Table (Hidden on Mobile) */}
-        <div className="hidden lg:block bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-          <table className="w-full text-left">
+      {/* Transactions List */}
+      <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto no-scrollbar">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50/50 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">
-                <th className="px-8 py-6">Data</th>
-                <th className="px-8 py-6">Descrição</th>
-                <th className="px-8 py-6">Categoria</th>
-                <th className="px-8 py-6">Meio</th>
-                <th className="px-8 py-6 text-right">Valor</th>
-                <th className="px-8 py-6 text-center">Ações</th>
+              <tr className="border-b border-slate-50 dark:border-slate-800">
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Data</th>
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Descrição</th>
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Categoria</th>
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor</th>
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
               {filtered.map((t) => {
                 const category = categories.find(c => c.id === t.categoryId);
                 return (
-                  <tr key={t.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <tr key={t.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-8 py-6">
-                      <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
                         {new Date(t.date).toLocaleDateString('pt-BR')}
-                      </span>
+                      </p>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-800 text-sm">{t.description}</span>
-                          {t.isRecurring && <Repeat size={12} className="text-emerald-500" />}
-                        </div>
-                        {t.notes && (
-                          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium italic">
-                            <StickyNote size={10} /> {t.notes.substring(0, 40)}{t.notes.length > 40 ? '...' : ''}
-                          </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black text-slate-900 dark:text-white tracking-tight">{t.description}</span>
+                        {t.isRecurring && (
+                          <span className="flex items-center gap-1 text-[8px] font-black text-indigo-500 uppercase mt-1">
+                            <Repeat size={10} /> Recorrente ({t.frequency})
+                          </span>
                         )}
                       </div>
                     </td>
                     <td className="px-8 py-6">
-                      <span className="flex items-center gap-2.5 px-3 py-1.5 bg-white border border-slate-100 rounded-xl shadow-sm w-fit text-xs font-bold text-slate-600">
-                        {category?.icon} {category?.name}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-lg">{category?.icon || '📂'}</span>
+                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{category?.name || 'Outros'}</span>
+                      </div>
                     </td>
                     <td className="px-8 py-6">
-                      <span className="text-[10px] font-black uppercase text-slate-400">{t.paymentMethod.replace('_', ' ')}</span>
+                      <span className={`text-sm font-black ${t.type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {t.type === 'INCOME' ? '+' : '-'} R$ {t.amount.toLocaleString('pt-BR')}
+                      </span>
                     </td>
-                    <td className={`px-8 py-6 font-black text-sm text-right ${t.type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      R$ {t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-8 py-6 text-center">
-                      <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                        <button onClick={() => handleEdit(t)} className="text-slate-300 hover:text-emerald-600 p-2.5 hover:bg-emerald-50 rounded-xl transition-all">
-                          <Edit2 size={18} />
+                    <td className="px-8 py-6 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => handleEdit(t)}
+                          className="p-3 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all"
+                        >
+                          <Edit2 size={16} />
                         </button>
-                        <button onClick={() => onDelete(t.id)} className="text-slate-300 hover:text-rose-600 p-2.5 hover:bg-rose-50 rounded-xl transition-all">
-                          <Trash2 size={18} />
+                        <button 
+                          onClick={() => onDelete(t.id)}
+                          className="p-3 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"
+                        >
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
                   </tr>
                 );
               })}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-8 py-20 text-center">
+                    <div className="flex flex-col items-center gap-4 text-slate-300">
+                      <FileText size={48} />
+                      <p className="text-sm font-black uppercase tracking-widest">Nenhuma transação encontrada</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modals: Mobile Optimized */}
+      {/* Modal: Adicionar/Editar Transação */}
       {showAddForm && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in duration-300">
-            <div className={`p-6 sm:p-8 ${editingTransactionId ? 'bg-indigo-600' : 'bg-emerald-600'} text-white flex justify-between items-center`}>
-              <h3 className="text-xl font-black">{editingTransactionId ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-300">
+            <div className="p-8 bg-emerald-600 text-white flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-xl"><Plus size={20}/></div>
+                <h3 className="text-xl font-black uppercase tracking-tight">{editingTransactionId ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
+              </div>
               <button onClick={() => setShowAddForm(false)} className="p-2 hover:bg-white/20 rounded-full transition-all"><X size={24}/></button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6 max-h-[85vh] overflow-y-auto no-scrollbar">
-              {/* Seletor de Tipo */}
-              <div className="grid grid-cols-2 gap-3">
+            
+            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Descrição</label>
+                  <input 
+                    required 
+                    placeholder="Ex: Supermercado" 
+                    className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold dark:text-white"
+                    value={formData.description}
+                    onChange={e => setFormData({...formData, description: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Valor (R$)</label>
+                  <input 
+                    required 
+                    type="number" step="0.01"
+                    className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-slate-800 dark:text-white"
+                    value={formData.amount || ''}
+                    onChange={e => setFormData({...formData, amount: parseFloat(e.target.value)})}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Data</label>
+                  <input 
+                    required 
+                    type="date"
+                    className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold dark:text-white"
+                    value={formData.date}
+                    onChange={e => setFormData({...formData, date: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 flex justify-between">
+                    Categoria
+                    <button 
+                      type="button"
+                      onClick={() => setShowAddCategoryModal(true)}
+                      className="text-emerald-600 hover:text-emerald-700 font-black flex items-center gap-1 active:scale-95 transition-transform"
+                    >
+                      <Plus size={12} /> Adicionar Nova
+                    </button>
+                  </label>
+                  <div className="relative">
+                    <select 
+                      required
+                      className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold dark:text-white appearance-none cursor-pointer"
+                      value={formData.categoryId}
+                      onChange={e => setFormData({...formData, categoryId: e.target.value})}
+                    >
+                      <option value="" disabled>Selecione...</option>
+                      {categoriesForCurrentType.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <ChevronRight size={18} className="rotate-90" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4 p-1 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
                 <button 
                   type="button"
-                  onClick={() => setFormData({...formData, type: 'EXPENSE', categoryId: categories.find(c => c.type === 'EXPENSE')?.id || '5'})}
-                  className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all ${formData.type === 'EXPENSE' ? 'bg-rose-50 border-rose-500 text-rose-700' : 'bg-slate-50 border-transparent text-slate-400'}`}
+                  onClick={() => setFormData({...formData, type: 'EXPENSE', categoryId: categories.find(c => c.type === 'EXPENSE')?.id || ''})}
+                  className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${formData.type === 'EXPENSE' ? 'bg-rose-500 text-white shadow-lg' : 'text-slate-400'}`}
                 >
                   Despesa
                 </button>
                 <button 
                   type="button"
-                  onClick={() => setFormData({...formData, type: 'INCOME', categoryId: categories.find(c => c.type === 'INCOME')?.id || '1'})}
-                  className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all ${formData.type === 'INCOME' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-slate-50 border-transparent text-slate-400'}`}
+                  onClick={() => setFormData({...formData, type: 'INCOME', categoryId: categories.find(c => c.type === 'INCOME')?.id || ''})}
+                  className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${formData.type === 'INCOME' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400'}`}
                 >
                   Receita
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Valor (R$)</label>
-                    <input required type="number" step="0.01" value={formData.amount || ''} onChange={e => setFormData({...formData, amount: parseFloat(e.target.value)})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700" placeholder="0,00" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Data</label>
-                    <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700" />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Descrição</label>
-                  <input required type="text" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700" placeholder="Ex: Supermercado" />
-                </div>
-
-                {/* Recurrence Fields */}
-                <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Repeat size={18} className={formData.isRecurring ? "text-emerald-500" : "text-slate-300"} />
-                      <div>
-                        <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest leading-none">Recorrência</p>
-                        <p className="text-[9px] text-slate-400 font-medium">Repetir transação automaticamente</p>
-                      </div>
-                    </div>
-                    <button 
-                      type="button"
-                      onClick={() => setFormData({...formData, isRecurring: !formData.isRecurring})}
-                      className={`w-12 h-6 rounded-full p-1 transition-all ${formData.isRecurring ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                    >
-                      <div className={`w-4 h-4 bg-white rounded-full transition-transform ${formData.isRecurring ? 'translate-x-6' : 'translate-x-0'}`} />
-                    </button>
-                  </div>
-
-                  {formData.isRecurring && (
-                    <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-1">
-                        <Clock size={12} /> Frequência de Repetição
-                      </label>
-                      <select 
-                        value={formData.frequency} 
-                        onChange={e => setFormData({...formData, frequency: e.target.value as RecurringFrequency})}
-                        className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 appearance-none cursor-pointer"
-                      >
-                        <option value="WEEKLY">Semanal</option>
-                        <option value="MONTHLY">Mensal</option>
-                        <option value="YEARLY">Anual</option>
-                      </select>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Observações (Opcional)</label>
-                  <textarea 
-                    rows={2} 
-                    value={formData.notes || ''} 
-                    onChange={e => setFormData({...formData, notes: e.target.value})} 
-                    className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 resize-none outline-none focus:ring-2 focus:ring-emerald-500/20" 
-                    placeholder="Adicione detalhes extras aqui..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Categoria</label>
-                    <select value={formData.categoryId} onChange={e => setFormData({...formData, categoryId: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 appearance-none">
-                      {categories.filter(c => c.type === formData.type).map(cat => <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Pagamento</label>
-                    <select value={formData.paymentMethod} onChange={e => setFormData({...formData, paymentMethod: e.target.value as PaymentMethod})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 appearance-none">
-                      <option value="CREDIT_CARD">Cartão Crédito</option>
-                      <option value="DEBIT_CARD">Cartão Débito</option>
-                      <option value="PIX">PIX</option>
-                      <option value="TRANSFER">Transferência</option>
-                      <option value="CASH">Dinheiro</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <button type="submit" className={`w-full py-5 ${editingTransactionId ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-900 hover:bg-emerald-600'} text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2`}>
-                <Check size={18}/> {editingTransactionId ? 'Atualizar Lançamento' : 'Salvar Lançamento'}
+              <button className="w-full py-5 bg-slate-900 dark:bg-slate-800 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-2">
+                <Check size={18} /> {editingTransactionId ? 'Salvar Alterações' : 'Confirmar Lançamento'}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Import Modal: Full Screen Mobile */}
-      {showImportModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in duration-300">
-                <div className="p-6 bg-slate-900 text-white flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <Sparkles className="text-emerald-400" size={20} />
-                        <h3 className="text-lg font-black uppercase tracking-widest">Leitor de Extrato IA</h3>
-                    </div>
-                    <button onClick={() => setShowImportModal(false)}><X size={24}/></button>
-                </div>
-                <div className="p-6 overflow-y-auto">
-                    {pendingTransactions.length === 0 ? (
-                        <div className="space-y-4">
-                            <textarea 
-                                className="w-full h-48 p-4 bg-slate-50 border border-slate-200 rounded-2xl font-mono text-sm resize-none outline-none focus:ring-2 focus:ring-emerald-500"
-                                placeholder="Cole aqui o texto do seu extrato..."
-                                value={importText}
-                                onChange={e => setImportText(e.target.value)}
-                            />
-                            <button 
-                                onClick={handleImportStatement}
-                                disabled={isProcessing || !importText}
-                                className="w-full py-4 bg-emerald-600 text-white font-black uppercase tracking-widest rounded-2xl disabled:opacity-50 flex items-center justify-center gap-2"
-                            >
-                                {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <Zap size={20}/>}
-                                Analisar com IA
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {pendingTransactions.map((pt, i) => (
-                                <div key={i} className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between">
-                                    <div className="text-xs">
-                                        <p className="font-bold text-slate-800">{pt.description}</p>
-                                        <p className="text-slate-400 font-black uppercase tracking-tighter">R$ {pt.amount.toLocaleString('pt-BR')}</p>
-                                    </div>
-                                    <Check className="text-emerald-500" size={18}/>
-                                </div>
-                            ))}
-                            <button onClick={confirmImport} className="w-full py-4 bg-emerald-600 text-white font-black uppercase rounded-2xl mt-4">Importar Todos</button>
-                        </div>
-                    )}
-                </div>
+      {/* Modal: Adicionar Categoria Rápida */}
+      {showAddCategoryModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-300 border border-white/10">
+            <div className="p-8 bg-slate-900 dark:bg-slate-800 text-white flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <Tag size={20} className="text-emerald-400" />
+                <h3 className="font-black uppercase tracking-widest text-sm">Nova Categoria</h3>
+              </div>
+              <button onClick={() => setShowAddCategoryModal(false)}><X size={24}/></button>
             </div>
+            
+            <form onSubmit={handleAddQuickCategory} className="p-8 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Nome da Categoria</label>
+                <input 
+                  autoFocus
+                  required 
+                  placeholder="Ex: Saúde, Lazer..." 
+                  className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black dark:text-white"
+                  value={newCatData.name}
+                  onChange={e => setNewCatData({...newCatData, name: e.target.value})}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Emoji / Ícone</label>
+                  <input 
+                    required 
+                    placeholder="🍔" 
+                    className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-center text-2xl"
+                    value={newCatData.icon}
+                    onChange={e => setNewCatData({...newCatData, icon: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Cor</label>
+                  <div className="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl">
+                    {COLORS.map(c => (
+                      <button 
+                        key={c}
+                        type="button"
+                        onClick={() => setNewCatData({...newCatData, color: c})}
+                        className={`w-6 h-6 rounded-full transition-all ${newCatData.color === c ? 'ring-4 ring-slate-300 scale-110' : 'hover:scale-110'}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <button className="w-full py-5 bg-emerald-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-emerald-500/20 active:scale-95 transition-all">
+                Criar Categoria
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Importar Extrato */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-3xl overflow-hidden animate-in zoom-in duration-300">
+            <div className="p-8 bg-slate-900 dark:bg-slate-800 text-white flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <Sparkles size={24} className="text-emerald-400" />
+                <h3 className="text-xl font-black uppercase tracking-tight">Extração por IA</h3>
+              </div>
+              <button onClick={() => setShowImportModal(false)}><X size={24}/></button>
+            </div>
+            
+            <div className="p-8 space-y-8">
+              {pendingTransactions.length === 0 ? (
+                <div className="space-y-6">
+                  <p className="text-sm font-medium text-slate-500 leading-relaxed">
+                    Cole o texto do seu extrato bancário ou faturas. Nossa IA identificará datas, descrições, valores e categorias automaticamente.
+                  </p>
+                  <textarea 
+                    rows={8}
+                    placeholder="Cole aqui o conteúdo do extrato..."
+                    className="w-full p-6 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[2rem] font-mono text-xs text-slate-600 dark:text-slate-300 outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none"
+                    value={importText}
+                    onChange={e => setImportText(e.target.value)}
+                  />
+                  <button 
+                    onClick={handleImportStatement}
+                    disabled={isProcessing || !importText.trim()}
+                    className="w-full py-5 bg-emerald-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl hover:bg-emerald-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    {isProcessing ? <Loader2 className="animate-spin" size={20}/> : <Zap size={20}/>}
+                    Iniciar Processamento Inteligente
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-black text-slate-800 dark:text-white uppercase tracking-widest text-sm">Transações Identificadas ({pendingTransactions.length})</h4>
+                    <button onClick={() => setPendingTransactions([])} className="text-[10px] font-black text-rose-500 uppercase">Limpar Tudo</button>
+                  </div>
+                  <div className="max-h-[400px] overflow-y-auto space-y-3 pr-2 no-scrollbar">
+                    {pendingTransactions.map((pt, i) => (
+                      <div key={i} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 flex justify-between items-center group">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-white dark:bg-slate-700 rounded-xl flex items-center justify-center text-lg">
+                            {categories.find(c => c.id === pt.categoryId)?.icon || '📂'}
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-slate-800 dark:text-white truncate max-w-[200px]">{pt.description}</p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase">{new Date(pt.date).toLocaleDateString('pt-BR')}</p>
+                          </div>
+                        </div>
+                        <p className={`text-sm font-black ${pt.type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          R$ {pt.amount.toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <button 
+                    onClick={confirmImport}
+                    className="w-full py-5 bg-emerald-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Check size={20}/> Adicionar ao Extrato
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
