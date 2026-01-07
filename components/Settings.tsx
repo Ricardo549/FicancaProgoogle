@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 import { 
   User, Monitor, Globe, Lock, Check, RefreshCw, Zap, Moon, Sun, 
   Contrast, ShieldCheck, Eye, LogOut, Type, ChevronRight, Fingerprint, 
-  Search, Ban, Clock, Plus, Trash2, Tag, Palette, LayoutGrid, TrendingUp, X, ShieldAlert
+  Search, Ban, Clock, Plus, Trash2, Tag, Palette, LayoutGrid, TrendingUp, X, ShieldAlert,
+  Languages
 } from 'lucide-react';
-import { Category, TransactionType } from '../types';
+import { Category, TransactionType } from '../utils/types';
 
 interface SettingsProps {
   user: any;
@@ -30,6 +31,11 @@ const FONTS = [
   { id: 'Inter', name: 'Inter', desc: 'Moderno e legível' },
   { id: 'Roboto', name: 'Roboto', desc: 'Geométrico e amigável' },
   { id: 'Open Sans', name: 'Open Sans', desc: 'Clássico e equilibrado' },
+];
+
+const LANGUAGES_LIST = [
+  { id: 'pt-BR', name: 'Português', flag: '🇧🇷', label: 'Brasil' },
+  { id: 'en-US', name: 'English', flag: '🇺🇸', label: 'United States' },
 ];
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
@@ -206,6 +212,29 @@ const Settings: React.FC<SettingsProps> = ({ user, setUser, config, setConfig, c
                       <Type size={20} className="mb-2 text-slate-400" />
                       <p className="font-black text-sm dark:text-white" style={{fontFamily: f.id}}>{f.name}</p>
                       <p className="text-[10px] text-slate-400 font-bold">{f.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Idioma do Aplicativo</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {LANGUAGES_LIST.map(lang => (
+                    <button 
+                      key={lang.id} 
+                      onClick={() => handleChange('language', lang.id)} 
+                      className={`p-5 rounded-2xl border-2 text-left transition-all flex items-center gap-4 ${config.language === lang.id ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-slate-100 dark:border-slate-800 hover:bg-slate-50'}`}
+                    >
+                      <span className="text-3xl filter grayscale-[0.2]">{lang.flag}</span>
+                      <div>
+                        <p className="font-black text-sm dark:text-white uppercase tracking-tight">{lang.name}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{lang.label}</p>
+                      </div>
+                      {config.language === lang.id && (
+                        <div className="ml-auto p-1 bg-emerald-500 text-white rounded-full">
+                          <Check size={12} />
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>

@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, History, Target, TrendingUp, Calculator, Settings as SettingsIcon,
-  LogOut, Menu, X, PlusCircle, ChevronRight, User as UserIcon, Shield, Star, Lock
+  LogOut, Menu, X, PlusCircle, ChevronRight, User as UserIcon, Shield, Star, Lock, Sparkles
 } from 'lucide-react';
-import { Transaction, Account, FinancialGoal, Investment, RecurringFrequency, Category } from './types';
+import { Transaction, Account, FinancialGoal, Investment, RecurringFrequency, Category } from './utils/types';
 import { INITIAL_ACCOUNTS, CATEGORIES as INITIAL_CATEGORIES } from './constants';
 import Dashboard from './components/Dashboard';
 import Transactions from './components/Transactions';
@@ -15,35 +15,88 @@ import Auth from './components/Auth';
 import Settings from './components/Settings';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import Admin from './components/Admin';
+import Checkout from './components/Checkout';
 
-type View = 'dashboard' | 'transactions' | 'planning' | 'investments' | 'credit' | 'settings' | 'privacy' | 'admin';
+type View = 'dashboard' | 'transactions' | 'planning' | 'investments' | 'credit' | 'settings' | 'privacy' | 'admin' | 'checkout';
 
 const ADMIN_EMAIL = 'ricardobm647@gmail.com';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>('dashboard');
-  const [user, setUser] = useState<any>(() => JSON.parse(localStorage.getItem('fpro_user') || 'null'));
-  const [transactions, setTransactions] = useState<Transaction[]>(() => JSON.parse(localStorage.getItem('fpro_tx') || '[]'));
-  const [goals, setGoals] = useState<FinancialGoal[]>(() => JSON.parse(localStorage.getItem('fpro_goals') || '[]'));
-  const [investments, setInvestments] = useState<Investment[]>(() => JSON.parse(localStorage.getItem('fpro_inv') || '[]'));
-  const [categories, setCategories] = useState<Category[]>(() => JSON.parse(localStorage.getItem('fpro_categories') || JSON.stringify(INITIAL_CATEGORIES)));
+  
+  const [user, setUser] = useState<any>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('fpro_user') || 'null');
+    } catch {
+      return null;
+    }
+  });
+
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('fpro_tx') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const [goals, setGoals] = useState<FinancialGoal[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('fpro_goals') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const [investments, setInvestments] = useState<Investment[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('fpro_inv') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const [categories, setCategories] = useState<Category[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('fpro_categories') || JSON.stringify(INITIAL_CATEGORIES));
+    } catch {
+      return INITIAL_CATEGORIES;
+    }
+  });
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [config, setConfig] = useState(() => {
-    const saved = localStorage.getItem('fin_config');
-    return saved ? JSON.parse(saved) : {
-      fontSize: 'medium',
-      fontFamily: 'Inter',
-      language: 'pt-BR',
-      openFinance: false,
-      autoSync: 'hourly',
-      notifications: true,
-      theme: 'light',
-      dynamicDarkMode: false,
-      mfa: false,
-      privacyMode: false,
-      connectedBank: null
-    };
+    try {
+      const saved = localStorage.getItem('fin_config');
+      return saved ? JSON.parse(saved) : {
+        fontSize: 'medium',
+        fontFamily: 'Inter',
+        language: 'pt-BR',
+        openFinance: false,
+        autoSync: 'hourly',
+        notifications: true,
+        theme: 'light',
+        dynamicDarkMode: false,
+        mfa: false,
+        privacyMode: false,
+        connectedBank: null
+      };
+    } catch {
+      return {
+        fontSize: 'medium',
+        fontFamily: 'Inter',
+        language: 'pt-BR',
+        openFinance: false,
+        autoSync: 'hourly',
+        notifications: true,
+        theme: 'light',
+        dynamicDarkMode: false,
+        mfa: false,
+        privacyMode: false,
+        connectedBank: null
+      };
+    }
   });
 
   useEffect(() => {
@@ -86,6 +139,12 @@ const App: React.FC = () => {
     setIsMobileMenuOpen(false);
   };
 
+  const handleUpgradeSuccess = () => {
+    const updatedUser = { ...user, plan: 'pro' };
+    setUser(updatedUser);
+    handleNavigate('dashboard');
+  };
+
   const renderContent = () => {
     switch(activeView) {
       case 'dashboard': return <Dashboard transactions={transactions} goals={goals} accounts={INITIAL_ACCOUNTS} categories={categories} userPlan={userPlan} />;
@@ -95,6 +154,7 @@ const App: React.FC = () => {
       case 'credit': return <CreditSimulator />;
       case 'settings': return <Settings user={user} setUser={setUser} config={config} setConfig={setConfig} categories={categories} setCategories={setCategories} navigateToPrivacy={() => handleNavigate('privacy')} />;
       case 'privacy': return <PrivacyPolicy onBack={() => handleNavigate('dashboard')} />;
+      case 'checkout': return <Checkout onCancel={() => handleNavigate('dashboard')} onSuccess={handleUpgradeSuccess} user={user} />;
       case 'admin': 
         if (!isAdmin) {
             handleNavigate('dashboard');
@@ -139,8 +199,11 @@ const App: React.FC = () => {
           <span className="text-[10px] font-black uppercase tracking-widest dark:text-white">Plano {userPlan === 'pro' ? 'Premium' : 'Gratuito'}</span>
         </div>
         {userPlan === 'free' && (
-          <button className="w-full py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all">
-            Mudar para Pro
+          <button 
+            onClick={() => handleNavigate('checkout')}
+            className="w-full py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 group"
+          >
+            Mudar para Pro <Sparkles size={12} className="group-hover:animate-pulse" />
           </button>
         )}
       </div>
@@ -194,7 +257,7 @@ const App: React.FC = () => {
             </button>
             <div className="flex flex-col">
               <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">
-                {activeView === 'admin' ? 'Administração Global' : (activeView === 'privacy' ? 'Privacidade' : (menu.find(m => m.id === activeView)?.label.split(' ')[0] || 'Visão'))}
+                {activeView === 'checkout' ? 'Upgrade Premium' : activeView === 'admin' ? 'Administração Global' : (activeView === 'privacy' ? 'Privacidade' : (menu.find(m => m.id === activeView)?.label.split(' ')[0] || 'Visão'))}
               </h2>
               <div className="flex items-center gap-1">
                  <div className={`w-1.5 h-1.5 rounded-full ${isAdmin ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>

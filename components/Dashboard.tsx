@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, Legend
 } from 'recharts';
-import { Transaction, Account, FinancialGoal, Category } from '../types';
+import { Transaction, Account, FinancialGoal, Category } from '../utils/types';
 import { MONTHS } from '../constants';
 import { getFinancialInsights } from '../services/gemini';
 import { 
@@ -102,7 +102,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, goals, accounts, ca
         <StatCard title="Score IA" value={aiAnalysis?.healthScore || 0} icon={<Star/>} color="amber" isScore />
       </div>
 
-      {/* Seção de Orçamento Mensal */}
       <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 relative z-10">
           <div className="flex items-center gap-4">
@@ -191,13 +190,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, goals, accounts, ca
           </div>
         </div>
 
-        {/* Efeito Visual de Fundo */}
         <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:scale-110 transition-transform pointer-events-none">
           <Target size={240} />
         </div>
       </div>
 
-      {/* Ad Slot for Free Users - Top */}
       {userPlan === 'free' && (
         <div className="w-full p-4 bg-slate-100 dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-800 rounded-[2rem] flex flex-col items-center justify-center gap-2">
            <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Publicidade Google AdSense</span>
@@ -248,7 +245,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, goals, accounts, ca
         </div>
       </div>
 
-      {/* BarChart - Volume de Despesas Mensais */}
       <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex items-center justify-between mb-8">
           <h4 className="text-sm font-black dark:text-white uppercase tracking-widest flex items-center gap-2">
@@ -286,7 +282,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, goals, accounts, ca
         </div>
       </div>
 
-      {/* Ad Slot for Free Users - Bottom */}
       {userPlan === 'free' && (
         <div className="p-8 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-[2.5rem] flex flex-col items-center gap-4 text-center">
             <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Patrocinado</div>

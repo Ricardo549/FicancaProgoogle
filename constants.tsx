@@ -1,5 +1,5 @@
 
-import { Category, Account } from './types';
+import { Category, Account } from './utils/types';
 
 export const CATEGORIES: Category[] = [
   { id: '1', name: 'Salário', icon: '💼', color: '#10b981', type: 'INCOME' },

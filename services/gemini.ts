@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Transaction, FinancialGoal, Category } from "../types";
+import { Transaction, FinancialGoal, Category } from "../utils/types";
 
 export const getFinancialInsights = async (
   transactions: Transaction[], 
