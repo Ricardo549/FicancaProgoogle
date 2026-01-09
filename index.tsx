@@ -3,13 +3,26 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
-class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: Error | null}> {
-  constructor(props: {children: ReactNode}) {
+// Explicit interfaces for Props and State to fix Property 'state' and 'props' errors
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+// Fixed ErrorBoundary by explicitly extending Component with props and state types
+// and declaring class properties to satisfy TypeScript.
+class ErrorBoundary extends Component<React.PropsWithChildren<{}>, ErrorBoundaryState> {
+  // Explicitly declared state property to resolve "Property 'state' does not exist" errors
+  public state: ErrorBoundaryState = {
+    hasError: false,
+    error: null
+  };
+
+  constructor(props: React.PropsWithChildren<{}>) {
     super(props);
-    this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error: Error) {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
@@ -18,6 +31,7 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
   }
 
   render() {
+    // Accessing this.state correctly now that it's explicitly declared
     if (this.state.hasError) {
       return (
         <div className="p-10 bg-rose-50 text-rose-900 min-h-screen flex flex-col items-center justify-center font-sans">
@@ -49,6 +63,7 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
       );
     }
 
+    // Accessing this.props correctly now that types are properly specified
     return this.props.children;
   }
 }

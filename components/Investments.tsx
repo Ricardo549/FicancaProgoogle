@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 
 interface InvestmentsProps {
+  userId: string; // Added userId to fix property missing error in new Investment objects
   investments: Investment[];
   setInvestments: React.Dispatch<React.SetStateAction<Investment[]>>;
   userPlan?: 'free' | 'pro';
@@ -49,7 +50,7 @@ const EvolutionTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments, userPlan = 'free' }) => {
+const Investments: React.FC<InvestmentsProps> = ({ userId, investments, setInvestments, userPlan = 'free' }) => {
   const [params, setParams] = useState({
     initial: 10000,
     monthly: 500,
@@ -97,8 +98,10 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments, 
   }, [params.initial, params.monthly, params.years]);
 
   const handleAddGoal = () => {
+    // Added userId to fix property missing error on Investment object
     const newInv: Investment = {
       id: Date.now().toString(),
+      userId,
       name: `Meta ${params.years} anos @ ${params.rate}%`,
       type: 'FUNDS',
       initialAmount: params.initial,

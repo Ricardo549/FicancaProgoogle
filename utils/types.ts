@@ -3,9 +3,21 @@ export type TransactionType = 'INCOME' | 'EXPENSE';
 export type TransactionStatus = 'PAID' | 'PENDING';
 export type PaymentMethod = 'CASH' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'PIX' | 'TRANSFER';
 export type RecurringFrequency = 'NONE' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+export type PlanType = 'free' | 'pro';
+export type AccountType = 'CHECKING' | 'SAVINGS' | 'WALLET' | 'INVESTMENT';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  plan: PlanType;
+  createdAt: string;
+}
 
 export interface Category {
   id: string;
+  userId?: string; // Se for null, é uma categoria padrão do sistema
   name: string;
   icon: string;
   color: string;
@@ -14,38 +26,43 @@ export interface Category {
 
 export interface Transaction {
   id: string;
+  userId: string;
   description: string;
   amount: number;
   date: string;
   type: TransactionType;
   categoryId: string;
+  accountId: string;
   status: TransactionStatus;
   paymentMethod: PaymentMethod;
   isRecurring: boolean;
   frequency?: RecurringFrequency;
-  lastGeneratedDate?: string;
   installments?: number;
-  currentInstallment?: number;
   notes?: string;
 }
 
 export interface Account {
   id: string;
+  userId: string;
   name: string;
   balance: number;
-  type: 'CHECKING' | 'SAVINGS' | 'WALLET';
+  type: AccountType;
+  color?: string;
 }
 
 export interface FinancialGoal {
   id: string;
+  userId: string;
   title: string;
   targetAmount: number;
   currentAmount: number;
   deadline: string;
+  categoryIds?: string[]; // Metas podem filtrar categorias
 }
 
 export interface Investment {
   id: string;
+  userId: string;
   name: string;
   type: 'FIXED_INCOME' | 'STOCKS' | 'FUNDS' | 'CRYPTO';
   initialAmount: number;
@@ -54,9 +71,11 @@ export interface Investment {
   expectedReturn: number; // yearly %
 }
 
-export interface CreditSimulation {
-  amount: number;
-  interestRate: number; // yearly %
-  periodMonths: number;
-  method: 'SAC' | 'PRICE';
+export interface AppConfig {
+  theme: 'light' | 'dark';
+  fontFamily: string;
+  language: string;
+  currency: string;
+  privacyMode: boolean;
+  notifications: boolean;
 }

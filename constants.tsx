@@ -13,10 +13,11 @@ export const CATEGORIES: Category[] = [
   { id: '9', name: 'Educação', icon: '📚', color: '#8b5cf6', type: 'EXPENSE' },
 ];
 
+// Added userId to fix property missing error in Account type
 export const INITIAL_ACCOUNTS: Account[] = [
-  { id: 'acc1', name: 'Banco Principal', balance: 5000, type: 'CHECKING' },
-  { id: 'acc2', name: 'Reserva de Emergência', balance: 15000, type: 'SAVINGS' },
-  { id: 'acc3', name: 'Carteira', balance: 250, type: 'WALLET' },
+  { id: 'acc1', userId: 'system', name: 'Banco Principal', balance: 5000, type: 'CHECKING' },
+  { id: 'acc2', userId: 'system', name: 'Reserva de Emergência', balance: 15000, type: 'SAVINGS' },
+  { id: 'acc3', userId: 'system', name: 'Carteira', balance: 250, type: 'WALLET' },
 ];
 
 export const MONTHS = [
