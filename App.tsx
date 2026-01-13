@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, History, Target, TrendingUp, Calculator, Settings as SettingsIcon,
-  LogOut, Menu, X, PlusCircle, ChevronRight, User as UserIcon, Shield, Star, Lock, Sparkles
+  LogOut, Menu, X, PlusCircle, ChevronRight, User as UserIcon, Shield, Star, Lock, Sparkles, Loader2
 } from 'lucide-react';
 import { Transaction, Account, FinancialGoal, Investment, Category, User, AppConfig } from './utils/types';
 import { INITIAL_ACCOUNTS, CATEGORIES as INITIAL_CATEGORIES } from './constants';
@@ -23,6 +23,7 @@ const ADMIN_EMAIL = 'ricardobm647@gmail.com';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>('dashboard');
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const [user, setUser] = useState<User | null>(() => {
     try {
@@ -32,39 +33,10 @@ const App: React.FC = () => {
     }
   });
 
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('fpro_tx') || '[]');
-    } catch {
-      return [];
-    }
-  });
-
-  const [goals, setGoals] = useState<FinancialGoal[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('fpro_goals') || '[]');
-    } catch {
-      return [];
-    }
-  });
-
-  const [investments, setInvestments] = useState<Investment[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('fpro_inv') || '[]');
-    } catch {
-      return [];
-    }
-  });
-
-  const [categories, setCategories] = useState<Category[]>(() => {
-    try {
-      const saved = localStorage.getItem('fpro_categories');
-      return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-    } catch {
-      return INITIAL_CATEGORIES;
-    }
-  });
-
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [goals, setGoals] = useState<FinancialGoal[]>([]);
+  const [investments, setInvestments] = useState<Investment[]>([]);
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [config, setConfig] = useState<AppConfig>(() => {
@@ -79,26 +51,76 @@ const App: React.FC = () => {
         notifications: true
       };
     } catch {
-      return {
-        theme: 'light',
-        fontFamily: 'Inter',
-        language: 'pt-BR',
-        currency: 'BRL',
-        privacyMode: false,
-        notifications: true
-      };
+      return { theme: 'light', fontFamily: 'Inter', language: 'pt-BR', currency: 'BRL', privacyMode: false, notifications: true };
     }
   });
 
+  // Efeito para carregar dados do PHP quando o usuário logar
   useEffect(() => {
-    localStorage.setItem('fpro_tx', JSON.stringify(transactions));
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
+  const fetchData = async () => {
+    if (!user) return;
+    setIsSyncing(true);
+    try {
+      // Exemplo de chamada à API PHP
+      const response = await fetch(`./api/transactions.php?userId=${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data)) setTransactions(data);
+      }
+    } catch (error) {
+      console.warn("API PHP Offline. Usando modo de demonstração local.");
+      // Fallback para LocalStorage se a API não estiver rodando (ambiente de dev)
+      const saved = localStorage.getItem('fpro_tx');
+      if (saved) setTransactions(JSON.parse(saved));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleAddTransaction = async (newT: Omit<Transaction, 'id'>) => {
+    if (!user) return;
+    const txId = Date.now().toString();
+    const fullTx = { ...newT, id: txId, userId: user.id } as Transaction;
+    
+    // Atualização Otimista na UI
+    setTransactions([fullTx, ...transactions]);
+
+    try {
+      await fetch(`./api/transactions.php?userId=${user.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fullTx)
+      });
+    } catch (error) {
+      console.error("Erro ao salvar no PHP:", error);
+      // Persiste no LocalStorage como backup
+      localStorage.setItem('fpro_tx', JSON.stringify([fullTx, ...transactions]));
+    }
+  };
+
+  const handleDeleteTransaction = async (id: string) => {
+    if (!user) return;
+    setTransactions(transactions.filter(t => t.id !== id));
+    try {
+      await fetch(`./api/transactions.php?userId=${user.id}&id=${id}`, { method: 'DELETE' });
+    } catch (error) {
+      console.error("Erro ao deletar no PHP:", error);
+    }
+  };
+
+  useEffect(() => {
     localStorage.setItem('fpro_goals', JSON.stringify(goals));
     localStorage.setItem('fpro_inv', JSON.stringify(investments));
     localStorage.setItem('fpro_categories', JSON.stringify(categories));
     if (user) localStorage.setItem('fpro_user', JSON.stringify(user));
     else localStorage.removeItem('fpro_user');
     localStorage.setItem('fin_config', JSON.stringify(config));
-  }, [transactions, goals, investments, user, categories, config]);
+  }, [goals, investments, user, categories, config]);
 
   useEffect(() => {
     document.body.style.fontFamily = `'${config.fontFamily}', sans-serif`;
@@ -141,19 +163,14 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch(activeView) {
       case 'dashboard': return <Dashboard transactions={transactions} goals={goals} accounts={INITIAL_ACCOUNTS} categories={categories} userPlan={userPlan} />;
-      case 'transactions': return <Transactions transactions={transactions} categories={categories} setCategories={setCategories} onAdd={(t) => setTransactions([{...t, id: Date.now().toString(), userId: user.id} as Transaction, ...transactions])} onDelete={(id) => setTransactions(transactions.filter(t => t.id !== id))} onUpdate={(updated) => setTransactions(transactions.map(t => t.id === updated.id ? updated : t))} />;
+      case 'transactions': return <Transactions transactions={transactions} categories={categories} setCategories={setCategories} onAdd={handleAddTransaction} onDelete={handleDeleteTransaction} onUpdate={(updated) => setTransactions(transactions.map(t => t.id === updated.id ? updated : t))} />;
       case 'planning': return <Planning goals={goals} setGoals={setGoals} transactions={transactions} />;
       case 'investments': return <Investments userId={user.id} investments={investments} setInvestments={setInvestments} userPlan={userPlan} />;
       case 'credit': return <CreditSimulator />;
       case 'settings': return <Settings user={user} setUser={setUser} config={config} setConfig={setConfig} categories={categories} setCategories={setCategories} navigateToPrivacy={() => handleNavigate('privacy')} />;
       case 'privacy': return <PrivacyPolicy onBack={() => handleNavigate('dashboard')} />;
       case 'checkout': return <Checkout onCancel={() => handleNavigate('dashboard')} onSuccess={handleUpgradeSuccess} user={user} />;
-      case 'admin': 
-        if (!isAdmin) {
-            handleNavigate('dashboard');
-            return null;
-        }
-        return <Admin />;
+      case 'admin': return isAdmin ? <Admin /> : null;
       default: return null;
     }
   };
@@ -226,28 +243,16 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-500 overflow-hidden">
-      {/* Sidebar Desktop */}
       <aside className="hidden lg:flex w-72 xl:w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col transition-all duration-300">
         <SidebarContent />
       </aside>
 
-      {/* Menu Mobile (Drawer) */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          {/* Backdrop com blur refinado */}
-          <div 
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-          {/* Drawer Panel otimizado para mobile */}
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsMobileMenuOpen(false)}/>
           <aside className="fixed top-0 left-0 bottom-0 w-[280px] max-w-[85vw] bg-white dark:bg-slate-900 shadow-2xl flex flex-col animate-in slide-in-from-left duration-300 ease-out border-r border-slate-200 dark:border-slate-800">
             <div className="absolute top-4 right-4 z-10">
-              <button 
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2.5 text-slate-400 hover:text-rose-500 transition-colors bg-slate-50 dark:bg-slate-800 rounded-xl active:scale-90"
-              >
-                <X size={20} />
-              </button>
+              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2.5 text-slate-400 hover:text-rose-500 transition-colors bg-slate-50 dark:bg-slate-800 rounded-xl active:scale-90"><X size={20} /></button>
             </div>
             <SidebarContent />
           </aside>
@@ -257,19 +262,15 @@ const App: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-slate-950 transition-colors duration-500">
         <header className="h-16 lg:h-20 xl:h-24 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 px-4 lg:px-12 flex items-center justify-between sticky top-0 z-40 transition-all">
           <div className="flex items-center gap-3 lg:gap-4 min-w-0">
-            <button 
-              onClick={() => setIsMobileMenuOpen(true)} 
-              className="lg:hidden p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-90 shadow-sm"
-            >
-              <Menu size={20}/>
-            </button>
+            <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-90 shadow-sm"><Menu size={20}/></button>
             <div className="flex flex-col min-w-0">
               <h2 className="text-base lg:text-xl font-black text-slate-900 dark:text-white tracking-tighter truncate">
                 {activeView === 'checkout' ? 'Upgrade Premium' : activeView === 'admin' ? 'Administração Global' : (activeView === 'privacy' ? 'Privacidade' : (menu.find(m => m.id === activeView)?.label || 'Visão'))}
               </h2>
               <div className="flex items-center gap-1.5">
                  <div className={`w-1.5 h-1.5 rounded-full ${isAdmin ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
-                 <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">{isAdmin ? 'Acesso Root Ativo' : 'Sincronizado'}</p>
+                 <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">{isSyncing ? 'Sincronizando via PHP...' : (isAdmin ? 'Acesso Root Ativo' : 'Sincronizado')}</p>
+                 {isSyncing && <Loader2 size={10} className="animate-spin text-emerald-500" />}
               </div>
             </div>
           </div>
@@ -278,18 +279,10 @@ const App: React.FC = () => {
               <p className="text-sm font-black text-slate-800 dark:text-white leading-none truncate max-w-[120px]">{user.name}</p>
               <div className="flex items-center justify-end gap-1 mt-1">
                 {isAdmin ? (
-                  <div className="flex items-center gap-1">
-                    <Lock size={10} className="text-amber-500" />
-                    <p className="text-[9px] font-black text-amber-600 uppercase tracking-[0.15em]">Admin</p>
-                  </div>
+                  <div className="flex items-center gap-1"><Lock size={10} className="text-amber-500" /><p className="text-[9px] font-black text-amber-600 uppercase tracking-[0.15em]">Admin</p></div>
                 ) : userPlan === 'pro' ? (
-                  <div className="flex items-center gap-1">
-                    <Shield size={10} className="text-emerald-500" />
-                    <p className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.15em]">Pro</p>
-                  </div>
-                ) : (
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">Free</p>
-                )}
+                  <div className="flex items-center gap-1"><Shield size={10} className="text-emerald-500" /><p className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.15em]">Pro</p></div>
+                ) : (<p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">Free</p>)}
               </div>
             </div>
             <div className="relative cursor-pointer group shrink-0" onClick={() => handleNavigate('settings')}>
@@ -298,7 +291,6 @@ const App: React.FC = () => {
             </div>
           </div>
         </header>
-
         <main className="flex-1 overflow-y-auto p-4 lg:p-12 no-scrollbar">
           <div className="max-w-7xl mx-auto">
             {renderContent()}
