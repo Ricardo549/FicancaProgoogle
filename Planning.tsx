@@ -99,6 +99,10 @@ const Planning: React.FC<PlanningProps> = ({ goals, setGoals, transactions }) =>
                     <p className="text-sm font-black text-slate-800 dark:text-white">R$ {goal.targetAmount.toLocaleString('pt-BR')}</p>
                   </div>
                 </div>
+
+                <div className="pt-2">
+                   <p className="text-[10px] text-center font-bold text-slate-400 italic">Faltam R$ {remaining > 0 ? remaining.toLocaleString('pt-BR') : '0'} para concluir</p>
+                </div>
               </div>
               
               <div className="mt-8 flex gap-2">
@@ -115,6 +119,16 @@ const Planning: React.FC<PlanningProps> = ({ goals, setGoals, transactions }) =>
             </div>
           );
         })}
+
+        {goals.length === 0 && (
+          <div className="col-span-full py-24 bg-white dark:bg-slate-900 border-4 border-dashed border-slate-100 dark:border-slate-800 rounded-[3rem] flex flex-col items-center justify-center text-center p-10">
+            <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
+                <Target size={40} className="text-slate-200 dark:text-slate-700" />
+            </div>
+            <h4 className="text-xl font-black text-slate-800 dark:text-white mb-2">Suas metas aparecerão aqui</h4>
+            <p className="text-slate-400 text-sm font-medium max-w-xs">Defina objetivos como "Reserva de Emergência" ou "Viagem dos Sonhos" para começar a poupar.</p>
+          </div>
+        )}
       </div>
 
       {showAdd && (
@@ -158,15 +172,18 @@ const Planning: React.FC<PlanningProps> = ({ goals, setGoals, transactions }) =>
                     <button onClick={() => setShowContribute(null)}><X size={20}/></button>
                 </div>
                 <div className="p-8 space-y-6 text-center">
-                    <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-300">R$</span>
-                        <input 
-                            autoFocus
-                            type="number" 
-                            className="w-full pl-12 pr-4 py-5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-2xl text-slate-800 dark:text-white outline-none focus:ring-4 focus:ring-emerald-500/10" 
-                            value={contributionAmount || ''}
-                            onChange={e => setContributionAmount(parseFloat(e.target.value))}
-                        />
+                    <div>
+                        <p className="text-xs font-bold text-slate-500 mb-4">Quanto você deseja poupar hoje para "{goals.find(g => g.id === showContribute)?.title}"?</p>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-300">R$</span>
+                            <input 
+                                autoFocus
+                                type="number" 
+                                className="w-full pl-12 pr-4 py-5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-2xl text-slate-800 dark:text-white outline-none focus:ring-4 focus:ring-emerald-500/10" 
+                                value={contributionAmount || ''}
+                                onChange={e => setContributionAmount(parseFloat(e.target.value))}
+                            />
+                        </div>
                     </div>
                     <button 
                         onClick={() => handleContribute(showContribute)}

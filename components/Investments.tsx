@@ -4,17 +4,17 @@ import { Investment } from '../utils/types';
 import { calculateCompoundInterest } from '../utils/financeMath';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  LineChart, Line, Legend, BarChart, Bar
+  LineChart, Line
 } from 'recharts';
 import { 
   TrendingUp, Plus, Zap, Shield, Target, 
-  Calculator, ListChecks, Briefcase, Trash2, Activity,
-  LineChart as LineChartIcon, Info, ExternalLink, ArrowRightLeft,
-  ChevronRight, Sparkles, Scale
+  Calculator, Briefcase, Trash2, Activity,
+  LineChart as LineChartIcon, Scale, Layers, Gem, Coins, Sparkles, Wallet,
+  Share2, ArrowRightLeft
 } from 'lucide-react';
 
 interface InvestmentsProps {
-  userId: string; // Added userId to fix property missing error in new Investment objects
+  userId: string;
   investments: Investment[];
   setInvestments: React.Dispatch<React.SetStateAction<Investment[]>>;
   userPlan?: 'free' | 'pro';
@@ -23,26 +23,104 @@ interface InvestmentsProps {
 const EvolutionTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
+    const isSingle = payload.length === 1 && data.invested !== undefined;
+    const isMultiLine = payload.length > 1 && payload[0].dataKey === 'amount';
+
     return (
-      <div className="bg-white dark:bg-slate-800 p-5 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-700 min-w-[260px] animate-in fade-in zoom-in duration-200">
-        <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-50 dark:border-slate-700">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tempo Decorrido</p>
-          <span className="text-[11px] font-black text-slate-800 dark:text-white bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-600">
-            {data.year} Anos
-          </span>
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-6 rounded-[2.5rem] shadow-2xl border border-slate-200/50 dark:border-slate-800/50 min-w-[300px] animate-in fade-in zoom-in duration-200">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Ponto de Controle</p>
+            <p className="text-sm font-black text-slate-900 dark:text-white">Ano {data.year} <span className="text-slate-400 font-medium ml-1">({data.month} meses)</span></p>
+          </div>
+          <div className="p-2 bg-emerald-500/10 rounded-xl">
+             <Sparkles size={16} className="text-emerald-600" />
+          </div>
         </div>
-        <div className="space-y-3">
-          {payload.map((p: any, idx: number) => (
-            <div key={idx} className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color || p.stroke }} />
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{p.name}</span>
+        
+        <div className="space-y-5">
+          {isSingle ? (
+            <>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-500">
+                       <Coins size={14} />
+                    </div>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Investido</span>
+                  </div>
+                  <span className="text-sm font-black text-slate-800 dark:text-white">
+                    R$ {data.invested.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/20 rounded-lg flex items-center justify-center text-emerald-600">
+                       <TrendingUp size={14} />
+                    </div>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Juros Ganhos</span>
+                  </div>
+                  <span className="text-sm font-black text-emerald-600">
+                    R$ {data.interest.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
               </div>
-              <span className="text-sm font-black text-slate-800 dark:text-white">
-                R$ {p.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </span>
+
+              <div className="space-y-2">
+                <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
+                   <div className="h-full bg-slate-400/50" style={{ width: `${(data.invested / data.amount) * 100}%` }} />
+                   <div className="h-full bg-emerald-500" style={{ width: `${(data.interest / data.amount) * 100}%` }} />
+                </div>
+                <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-slate-400 px-1">
+                   <span>Principal: {((data.invested / data.amount) * 100).toFixed(0)}%</span>
+                   <span>Rendimento: {((data.interest / data.amount) * 100).toFixed(0)}%</span>
+                </div>
+              </div>
+
+              <div className="pt-4 mt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                   <div className="p-2 bg-slate-900 dark:bg-emerald-600 rounded-lg text-white">
+                      <Wallet size={14} />
+                   </div>
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Patrimônio</span>
+                </div>
+                <span className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">
+                  R$ {data.amount.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                </span>
+              </div>
+            </>
+          ) : isMultiLine ? (
+            <div className="space-y-3">
+              {payload.map((p: any, idx: number) => (
+                <div key={idx} className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color || p.stroke }} />
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{p.name}</span>
+                  </div>
+                  <span className="text-sm font-black text-slate-800 dark:text-white">
+                    R$ {p.value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+              ))}
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between">
+                 <span className="text-[10px] font-black text-slate-400 uppercase">Diferença (Juros)</span>
+                 <span className="text-xs font-black text-emerald-600">R$ {(data.amount - data.invested).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</span>
+              </div>
             </div>
-          ))}
+          ) : (
+            payload.map((p: any, idx: number) => (
+              <div key={idx} className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color || p.stroke }} />
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{p.name}</span>
+                </div>
+                <span className="text-sm font-black text-slate-800 dark:text-white">
+                  R$ {p.value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                </span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     );
@@ -50,59 +128,50 @@ const EvolutionTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const Investments: React.FC<InvestmentsProps> = ({ userId, investments, setInvestments, userPlan = 'free' }) => {
+const Investments: React.FC<InvestmentsProps> = ({ userId, investments, setInvestments }) => {
   const [params, setParams] = useState({
     initial: 10000,
-    monthly: 500,
+    monthly: 1000,
     rate: 11.5,
-    years: 10,
-    targetMonthlyIncome: 5000
+    years: 15
   });
 
-  const [viewMode, setViewMode] = useState<'single' | 'compare'>('single');
+  const [viewMode, setViewMode] = useState<'single' | 'compare'>('compare');
 
   const projection = useMemo(() => {
-    return calculateCompoundInterest(
-      params.initial, 
-      params.monthly, 
-      params.rate, 
-      params.years
-    );
+    return calculateCompoundInterest(params.initial, params.monthly, params.rate, params.years);
   }, [params]);
 
   const comparisonData = useMemo(() => {
     const profiles = [
-      { name: 'Conservador', rate: 8.0, color: '#94a3b8' },
-      { name: 'Moderado', rate: 11.5, color: '#10b981' },
-      { name: 'Agressivo', rate: 15.0, color: '#8b5cf6' }
+      { id: 'cons', name: 'Conservador', rate: 8.5, color: '#94a3b8', icon: <Shield size={14}/> },
+      { id: 'mod', name: 'Moderado', rate: 12.0, color: '#10b981', icon: <Target size={14}/> },
+      { id: 'aggr', name: 'Agressivo', rate: 16.5, color: '#8b5cf6', icon: <Zap size={14}/> }
     ];
 
-    const results = profiles.map(p => ({
-      ...p,
-      result: calculateCompoundInterest(params.initial, params.monthly, p.rate, params.years)
-    }));
+    const results = profiles.map(p => {
+      const res = calculateCompoundInterest(params.initial, params.monthly, p.rate, params.years);
+      return { ...p, result: res, passive: res.total * (p.rate / 100 / 12) };
+    });
 
-    const maxLength = results[0].result.growth.length;
-    const combinedGrowth = [];
-    for (let i = 0; i < maxLength; i++) {
-      if (i % 6 === 0 || i === maxLength - 1) {
-        const entry: any = { year: results[0].result.growth[i].year };
+    const combinedGrowth = results[0].result.growth
+      .filter((_, i) => i % 6 === 0 || i === results[0].result.growth.length - 1)
+      .map((g) => {
+        const entry: any = { year: g.year, month: g.month };
         results.forEach(r => {
-          entry[r.name] = r.result.growth[i].amount;
+          entry[r.name] = r.result.growth.find(rg => rg.month === g.month)?.amount || 0;
         });
-        combinedGrowth.push(entry);
-      }
-    }
+        return entry;
+      });
 
     return { results, combinedGrowth };
   }, [params.initial, params.monthly, params.years]);
 
   const handleAddGoal = () => {
-    // Added userId to fix property missing error on Investment object
     const newInv: Investment = {
       id: Date.now().toString(),
       userId,
-      name: `Meta ${params.years} anos @ ${params.rate}%`,
+      name: `Meta ${params.years} anos`,
       type: 'FUNDS',
       initialAmount: params.initial,
       currentAmount: projection.total,
@@ -116,58 +185,85 @@ const Investments: React.FC<InvestmentsProps> = ({ userId, investments, setInves
     setInvestments(prev => prev.filter(inv => inv.id !== id));
   };
 
+  const handleShare = async () => {
+    const text = `Minha projeção financeira no FinanzoPro: Com um aporte mensal de R$ ${params.monthly.toLocaleString('pt-BR')}, meu patrimônio estimado em ${params.years} anos é de R$ ${projection.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}! 🚀`;
+    const url = window.location.href;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Minha Projeção FinanzoPro',
+          text: text,
+          url: url,
+        });
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(`${text} Veja em: ${url}`);
+        alert('Resumo copiado para a área de transferência!');
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    }
+  };
+
   return (
     <div className="space-y-12 animate-in fade-in duration-700 pb-32 lg:pb-0">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">Investimentos</h2>
-          <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">Simule cenários e planeje sua liberdade financeira.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Projete seu futuro com inteligência matemática.</p>
         </div>
-        <div className="flex bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="flex bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <button 
             onClick={() => setViewMode('single')}
-            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'single' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400'}`}
+            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'single' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
           >
-            Individual
+            Modo Simples
           </button>
           <button 
             onClick={() => setViewMode('compare')}
-            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'compare' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400'}`}
+            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'compare' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
           >
-            Comparar Perfis
+            Comparativo PRO
           </button>
         </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-4 space-y-6">
-          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm space-y-8 relative overflow-hidden">
-            <div className="flex items-center gap-3 relative z-10">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm space-y-8">
+            <div className="flex items-center gap-3">
               <div className="p-3 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl">
-                <Calculator size={24}/>
+                <Calculator size={20}/>
               </div>
-              <h3 className="font-bold text-slate-800 dark:text-white text-lg">Parâmetros Base</h3>
+              <h3 className="font-bold text-slate-800 dark:text-white text-md">Simulador</h3>
             </div>
 
-            <div className="space-y-8 relative z-10">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 block">Investimento Inicial (R$)</label>
-                <input 
-                  type="number" 
-                  className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 outline-none font-black text-slate-700 dark:text-white transition-all"
-                  value={params.initial}
-                  onChange={e => setParams({...params, initial: Number(e.target.value)})}
-                />
+            <div className="space-y-8">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Patrimônio Inicial</label>
+                <div className="relative">
+                   <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-300">R$</span>
+                   <input 
+                    type="number" 
+                    className="w-full pl-12 pr-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-slate-700 dark:text-white outline-none focus:border-emerald-500/50"
+                    value={params.initial}
+                    onChange={e => setParams({...params, initial: Number(e.target.value)})}
+                  />
+                </div>
               </div>
 
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Aporte Mensal (R$)</label>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-black text-xs">R$ {params.monthly.toLocaleString()}</span>
+              <div className="space-y-3">
+                <div className="flex justify-between px-1">
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aporte Mensal</label>
+                   <span className="text-[10px] font-black text-emerald-600">R$ {params.monthly}</span>
                 </div>
                 <input 
                   type="range" min="0" max="20000" step="100"
-                  className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                  className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full appearance-none accent-emerald-600 cursor-pointer"
                   value={params.monthly}
                   onChange={e => setParams({...params, monthly: Number(e.target.value)})}
                 />
@@ -175,88 +271,89 @@ const Investments: React.FC<InvestmentsProps> = ({ userId, investments, setInves
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Prazo (Anos)</label>
-                  <input 
-                    type="number" 
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-slate-700 dark:text-white"
-                    value={params.years}
-                    onChange={e => setParams({...params, years: Number(e.target.value)})}
-                  />
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block px-1">Anos</label>
+                   <input type="number" className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-2xl font-black text-slate-700 dark:text-white" value={params.years} onChange={e => setParams({...params, years: Number(e.target.value)})}/>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Taxa Alvo (% a.a.)</label>
-                  <input 
-                    disabled={viewMode === 'compare'}
-                    type="number" step="0.1"
-                    className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black transition-all ${viewMode === 'compare' ? 'opacity-50 cursor-not-allowed' : 'text-slate-700 dark:text-white'}`}
-                    value={params.rate}
-                    onChange={e => setParams({...params, rate: Number(e.target.value)})}
-                  />
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block px-1">Taxa (% a.a.)</label>
+                   <input type="number" step="0.1" className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-2xl font-black text-slate-700 dark:text-white" value={params.rate} onChange={e => setParams({...params, rate: Number(e.target.value)})}/>
                 </div>
               </div>
 
               <button 
                 onClick={handleAddGoal}
-                className="w-full py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-3 active:scale-95"
+                className="w-full py-5 bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center gap-3 active:scale-95"
               >
-                <Plus size={18}/> Fixar como Meta
+                <Plus size={18}/> Salvar como Objetivo
               </button>
             </div>
           </div>
 
-          {userPlan === 'free' && (
-            <div className="p-6 bg-slate-100 dark:bg-slate-800/50 rounded-[2.5rem] border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-center gap-4">
-              <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Patrocinado por Google AdSense</div>
-              <div className="w-full h-40 bg-slate-200 dark:bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-slate-700">
-                <div className="text-slate-400 font-bold text-xs">Publicidade Dinâmica</div>
-              </div>
+          <div className="bg-gradient-to-br from-indigo-600 to-indigo-950 p-8 rounded-[2.5rem] text-white space-y-4 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-125 transition-transform duration-700">
+               <Gem size={100} />
             </div>
-          )}
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300">Curiosidade Financeira</p>
+            <h4 className="font-bold text-lg leading-tight">Juros sobre Juros</h4>
+            <p className="text-xs text-indigo-100/60 font-medium leading-relaxed">
+              O tempo é o componente mais importante da equação. Iniciar 5 anos mais cedo pode triplicar o patrimônio final.
+            </p>
+          </div>
         </div>
 
         <div className="lg:col-span-8 space-y-8">
           {viewMode === 'single' ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between group overflow-hidden relative">
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm group relative overflow-hidden">
                   <div className="absolute -right-4 -top-4 p-8 text-emerald-500/5 group-hover:scale-110 transition-transform">
                     <TrendingUp size={120} />
                   </div>
                   <div className="relative z-10">
-                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Montante Final Estimado</p>
-                    <h3 className="text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tighter">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Montante Final Estimado</p>
+                    <h3 className="text-4xl font-black text-emerald-600 dark:text-emerald-400 tracking-tighter">
                       R$ {projection.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                     </h3>
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 mt-4 uppercase tracking-widest relative z-10">
-                    <Activity size={14}/> {params.years} anos de acumulação
-                  </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between group overflow-hidden relative">
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm group relative overflow-hidden">
                   <div className="absolute -right-4 -top-4 p-8 text-blue-500/5 group-hover:scale-110 transition-transform">
                     <Zap size={120} />
                   </div>
                   <div className="relative z-10">
-                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Rendimento Passivo Estimado</p>
-                    <h3 className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-tighter">
-                      R$ {(projection.total * (params.rate/100/12)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}/mês
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Renda Mensal Passiva</p>
+                    <h3 className="text-4xl font-black text-blue-600 dark:text-blue-400 tracking-tighter">
+                      R$ {(projection.total * (params.rate/100/12)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                     </h3>
                   </div>
-                  <p className="text-[10px] font-bold text-slate-400 mt-4 uppercase tracking-widest italic relative z-10">Baseado na taxa de {params.rate}% a.a.</p>
                 </div>
               </div>
 
               <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
-                <h4 className="text-sm font-black dark:text-white uppercase tracking-widest mb-8 flex items-center gap-2">
-                  <TrendingUp size={18} className="text-emerald-500" /> Curva de Crescimento Patrimonial
-                </h4>
-                <div className="h-[350px] w-full">
+                <div className="flex items-center justify-between mb-10">
+                   <h4 className="text-sm font-black dark:text-white uppercase tracking-widest flex items-center gap-2">
+                    <LineChartIcon size={18} className="text-emerald-500" /> Progressão Patrimonial
+                  </h4>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={handleShare}
+                      className="p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-600 rounded-xl border border-slate-100 dark:border-slate-700 transition-all active:scale-95"
+                      title="Compartilhar Projeção"
+                    >
+                      <Share2 size={16} />
+                    </button>
+                    <div className="px-3 py-1 bg-slate-50 dark:bg-slate-800 rounded-lg text-[10px] font-black text-slate-400 uppercase tracking-widest border border-slate-100 dark:border-slate-700">
+                      Anual
+                    </div>
+                  </div>
+                </div>
+                <div className="h-[400px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={projection.growth.filter((_, i) => i % 6 === 0 || i === projection.growth.length - 1)}>
+                    <AreaChart data={projection.growth.filter((_, i) => i % 12 === 0 || i === projection.growth.length - 1)}>
                       <defs>
                         <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.15}/>
                           <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
@@ -269,26 +366,60 @@ const Investments: React.FC<InvestmentsProps> = ({ userId, investments, setInves
                   </ResponsiveContainer>
                 </div>
               </div>
+
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center justify-between mb-10">
+                   <h4 className="text-sm font-black dark:text-white uppercase tracking-widest flex items-center gap-2">
+                    <ArrowRightLeft size={18} className="text-indigo-500" /> Evolução de Capital vs Patrimônio
+                  </h4>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                       <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                       <span className="text-[9px] font-black text-slate-400 uppercase">Patrimônio</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                       <div className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+                       <span className="text-[9px] font-black text-slate-400 uppercase">Capital Investido</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={projection.growth.filter((_, i) => i % 6 === 0 || i === projection.growth.length - 1)}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} tickFormatter={(val) => `R$ ${val >= 1000 ? (val/1000).toFixed(0) + 'k' : val}`} />
+                      <Tooltip content={<EvolutionTooltip />} />
+                      <Line name="Patrimônio Total" type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                      <Line name="Capital Investido" type="monotone" dataKey="invested" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 5" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {comparisonData.results.map((r, i) => (
-                  <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm hover:border-emerald-500/50 transition-all group">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-2 h-6 rounded-full" style={{ backgroundColor: r.color }} />
-                      <h4 className="font-black text-[10px] uppercase tracking-widest text-slate-400 group-hover:text-slate-800 dark:group-hover:text-white transition-colors">{r.name} ({r.rate}% a.a)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {comparisonData.results.map((r) => (
+                  <div key={r.id} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm group">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white" style={{ backgroundColor: r.color }}>
+                          {r.icon}
+                        </div>
+                        <h4 className="font-black text-[10px] uppercase tracking-widest text-slate-800 dark:text-white">{r.name}</h4>
+                      </div>
+                      <span className="text-[10px] font-black text-slate-400">{r.rate}% a.a</span>
                     </div>
+                    
                     <div className="space-y-4">
                       <div>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Montante Final</p>
-                        <p className="text-lg font-black dark:text-white">R$ {r.result.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Montante Final</p>
+                        <p className="text-xl font-black dark:text-white tracking-tighter">R$ {r.result.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
                       </div>
-                      <div className="pt-3 border-t border-slate-50 dark:border-slate-800">
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Renda Passiva</p>
-                        <p className={`text-md font-black`} style={{ color: r.color }}>
-                          R$ {(r.result.total * (r.rate/100/12)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}/mês
-                        </p>
+                      <div className="pt-4 border-t border-slate-50 dark:border-slate-800">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Renda Passiva</p>
+                        <p className="text-sm font-black text-slate-800 dark:text-white">R$ {r.passive.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}/m</p>
                       </div>
                     </div>
                   </div>
@@ -296,144 +427,83 @@ const Investments: React.FC<InvestmentsProps> = ({ userId, investments, setInves
               </div>
 
               <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
-                <div className="flex items-center justify-between mb-8">
-                  <h4 className="text-sm font-black dark:text-white uppercase tracking-widest flex items-center gap-2">
-                    <Scale size={18} className="text-indigo-500" /> Comparativo de Crescimento
+                <div className="flex items-center justify-between mb-10">
+                   <h4 className="text-sm font-black dark:text-white uppercase tracking-widest flex items-center gap-2">
+                    <Scale size={18} className="text-indigo-500" /> Disparidade de Rendimento
                   </h4>
-                  <div className="hidden sm:flex items-center gap-4">
+                  <div className="flex items-center gap-4">
                     {comparisonData.results.map(r => (
-                      <div key={r.name} className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: r.color }} />
+                      <div key={r.name} className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: r.color }} />
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{r.name}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="h-[350px] w-full">
+                <div className="h-[400px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={comparisonData.combinedGrowth}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} dy={10} />
                       <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} tickFormatter={(val) => `R$ ${val >= 1000 ? (val/1000).toFixed(0) + 'k' : val}`} />
                       <Tooltip content={<EvolutionTooltip />} />
-                      <Legend 
-                        className="sm:hidden"
-                        verticalAlign="bottom" 
-                        height={36} 
-                        iconType="circle"
-                        formatter={(value) => <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{value}</span>}
-                      />
                       {comparisonData.results.map(r => (
-                        <Line 
-                          key={r.name}
-                          name={r.name}
-                          type="monotone" 
-                          dataKey={r.name} 
-                          stroke={r.color} 
-                          strokeWidth={r.name === 'Moderado' ? 4 : 2} 
-                          dot={false}
-                        />
+                        <Line key={r.name} name={r.name} type="monotone" dataKey={r.name} stroke={r.color} strokeWidth={4} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
                       ))}
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-6 flex items-start gap-4 p-5 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/20">
-                  <div className="p-2 bg-white dark:bg-slate-800 rounded-lg text-indigo-500 shrink-0 shadow-sm">
-                    <Sparkles size={16}/>
-                  </div>
-                  <p className="text-[11px] font-medium text-indigo-900 dark:text-indigo-200/60 leading-relaxed">
-                    A diferença entre os perfis demonstra o impacto drástico que pequenas variações de taxa têm no longo prazo. O perfil 
-                    <span className="font-black text-indigo-600 dark:text-indigo-400 mx-1">Agressivo</span> 
-                    gera um montante 
-                    <span className="font-black">
-                      {((comparisonData.results[2].result.total / comparisonData.results[0].result.total)).toFixed(1)}x maior 
-                    </span> 
-                    que o Conservador neste cenário de {params.years} anos.
-                  </p>
-                </div>
               </div>
             </>
-          )}
-
-          {viewMode === 'single' && (
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
-              <h4 className="text-sm font-black dark:text-white uppercase tracking-widest mb-8 flex items-center gap-2">
-                <LineChartIcon size={18} className="text-blue-500" /> Evolução: Valor Atual vs Investido
-              </h4>
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={projection.growth.filter((_, i) => i % 6 === 0 || i === projection.growth.length - 1)}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} tickFormatter={(val) => `R$ ${val >= 1000 ? (val/1000).toFixed(0) + 'k' : val}`} />
-                    <Tooltip content={<EvolutionTooltip />} />
-                    <Legend 
-                      verticalAlign="top" 
-                      height={36} 
-                      iconType="circle"
-                      formatter={(value) => <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{value === 'amount' ? 'Valor Acumulado' : 'Capital Investido'}</span>}
-                    />
-                    <Line name="Valor Acumulado" type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
-                    <Line name="Capital Investido" type="monotone" dataKey="invested" stroke="#3b82f6" strokeWidth={3} strokeDasharray="5 5" dot={{ r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-6 flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/20">
-                <Info className="text-blue-500 shrink-0" size={16}/>
-                <p className="text-[10px] font-medium text-blue-800 dark:text-blue-200/60 leading-relaxed">
-                  A linha pontilhada azul representa o capital retirado do seu bolso. A diferença entre a linha verde e a azul é o "Poder do Tempo": juros compostos trabalhando por você.
-                </p>
-              </div>
-            </div>
           )}
         </div>
       </div>
 
-      <section className="space-y-6">
-        <div className="flex items-center gap-3">
-          <ListChecks className="text-emerald-500" size={24}/>
-          <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-widest">Estratégias Salvas</h3>
+      <section className="space-y-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Coins className="text-emerald-500" size={28}/>
+            <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tighter">Planos Fixados</h3>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {investments.map(inv => (
-            <div key={inv.id} className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-xl transition-all relative overflow-hidden">
-               <div className="flex justify-between items-start mb-6">
-                 <div className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-xl">
-                   <Briefcase size={20}/>
+            <div key={inv.id} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-xl transition-all relative overflow-hidden">
+               <div className="flex justify-between items-start mb-8">
+                 <div className="p-4 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-2xl group-hover:text-emerald-500 transition-colors">
+                   <Briefcase size={24}/>
                  </div>
                  <button 
                   onClick={() => removeInvestment(inv.id)}
-                  className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                  className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-xl transition-all"
                  >
-                   <Trash2 size={16}/>
+                   <Trash2 size={18}/>
                  </button>
                </div>
-               <h4 className="font-black text-slate-800 dark:text-white mb-1 truncate">{inv.name}</h4>
-               <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-6">Projeção Concluída</p>
                
-               <div className="space-y-3">
-                 <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Aporte</span>
-                    <span className="text-xs font-black dark:text-white">R$ {inv.monthlyAport}/mês</span>
+               <h4 className="font-black text-slate-800 dark:text-white text-lg mb-1">{inv.name}</h4>
+               <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-8">Base: {inv.expectedReturn}% a.a.</p>
+               
+               <div className="space-y-4">
+                 <div className="flex justify-between items-center px-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aporte Mensal</span>
+                    <span className="text-sm font-black dark:text-white">R$ {inv.monthlyAport.toLocaleString()}</span>
                  </div>
-                 <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Taxa</span>
-                    <span className="text-xs font-black dark:text-white">{inv.expectedReturn}% a.a.</span>
-                 </div>
-                 <div className="pt-3 border-t border-slate-50 dark:border-slate-800 flex justify-between items-center">
-                    <span className="text-[10px] font-black text-slate-400 uppercase">Patrimônio</span>
-                    <span className="text-sm font-black text-emerald-600">R$ {inv.currentAmount.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</span>
+                 <div className="pt-6 border-t border-slate-50 dark:border-slate-800 flex justify-between items-center">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alvo Final</span>
+                    <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 tracking-tighter">
+                      R$ {inv.currentAmount.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                    </span>
                  </div>
                </div>
             </div>
           ))}
           
           {investments.length === 0 && (
-            <div className="col-span-full py-16 bg-slate-50/50 dark:bg-slate-900/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem] flex flex-col items-center justify-center text-center px-8">
-              <TrendingUp size={32} className="text-slate-300 mb-4" />
-              <p className="text-sm font-bold text-slate-400">Nenhuma estratégia fixada ainda.</p>
-              <p className="text-[10px] font-medium text-slate-400 mt-1">Simule uma projeção acima e clique em "Fixar como Meta".</p>
+            <div className="col-span-full py-20 bg-white dark:bg-slate-900 border-4 border-dashed border-slate-100 dark:border-slate-800 rounded-[2.5rem] flex flex-col items-center justify-center text-center p-10">
+              <TrendingUp size={48} className="text-slate-200 dark:text-slate-700 mb-4" />
+              <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Nenhuma meta arquivada</p>
             </div>
           )}
         </div>

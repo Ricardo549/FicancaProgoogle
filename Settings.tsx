@@ -6,7 +6,7 @@ import {
   Search, Ban, Clock, Plus, Trash2, Tag, Palette, LayoutGrid, TrendingUp, X, ShieldAlert,
   Languages
 } from 'lucide-react';
-import { Category, TransactionType } from '../utils/types';
+import { Category, TransactionType } from './utils/types';
 
 interface SettingsProps {
   user: any;
