@@ -23,99 +23,113 @@ interface InvestmentsProps {
 const EvolutionTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    const isSingle = payload.length === 1 && data.invested !== undefined;
-    const isMultiLine = payload.length > 1 && payload[0].dataKey === 'amount';
+    // Determine if we're in the stacked area chart (wealth progression)
+    const isWealthProgression = payload.some(p => p.dataKey === 'invested' || p.dataKey === 'interest');
+    // Determine if we're in comparison mode
+    const isComparison = payload.length > 1 && !isWealthProgression;
+    // Single line/area (legacy or fallback)
+    const isSingle = payload.length === 1 && !isWealthProgression;
 
     return (
-      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-6 rounded-[2.5rem] shadow-2xl border border-slate-200/50 dark:border-slate-800/50 min-w-[300px] animate-in fade-in zoom-in duration-200">
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl border border-slate-200/50 dark:border-slate-800/50 min-w-[320px] animate-in fade-in zoom-in duration-300">
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Ponto de Controle</p>
-            <p className="text-sm font-black text-slate-900 dark:text-white">Ano {data.year} <span className="text-slate-400 font-medium ml-1">({data.month} meses)</span></p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Marco Temporal</p>
+            <p className="text-base font-black text-slate-900 dark:text-white">Ano {data.year} <span className="text-slate-400 font-medium ml-1">({data.month} meses)</span></p>
           </div>
-          <div className="p-2 bg-emerald-500/10 rounded-xl">
-             <Sparkles size={16} className="text-emerald-600" />
+          <div className="p-2.5 bg-emerald-500/10 rounded-2xl">
+             <Sparkles size={18} className="text-emerald-600 dark:text-emerald-400" />
           </div>
         </div>
         
-        <div className="space-y-5">
-          {isSingle ? (
+        <div className="space-y-6">
+          {isWealthProgression ? (
             <>
               <div className="space-y-4">
                 <div className="flex justify-between items-center group">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-500">
-                       <Coins size={14} />
+                    <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-500 transition-colors group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+                       <Coins size={16} />
                     </div>
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Investido</span>
+                    <div>
+                      <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Investido</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Capital Próprio</span>
+                    </div>
                   </div>
                   <span className="text-sm font-black text-slate-800 dark:text-white">
-                    R$ {data.invested.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    R$ {data.invested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center group">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/20 rounded-lg flex items-center justify-center text-emerald-600">
-                       <TrendingUp size={14} />
+                    <div className="w-9 h-9 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 transition-colors group-hover:bg-emerald-200 dark:group-hover:bg-emerald-800/50">
+                       <TrendingUp size={16} />
                     </div>
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Juros Ganhos</span>
+                    <div>
+                      <span className="block text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Juros Ganhos</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Rendimento Acumulado</span>
+                    </div>
                   </div>
-                  <span className="text-sm font-black text-emerald-600">
-                    R$ {data.interest.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                    R$ {data.interest.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
-                   <div className="h-full bg-slate-400/50" style={{ width: `${(data.invested / data.amount) * 100}%` }} />
-                   <div className="h-full bg-emerald-500" style={{ width: `${(data.interest / data.amount) * 100}%` }} />
+              <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+                <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex">
+                   <div className="h-full bg-slate-400 dark:bg-slate-500 transition-all duration-500" style={{ width: `${(data.invested / data.amount) * 100}%` }} />
+                   <div className="h-full bg-emerald-500 transition-all duration-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" style={{ width: `${(data.interest / data.amount) * 100}%` }} />
                 </div>
-                <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-slate-400 px-1">
-                   <span>Principal: {((data.invested / data.amount) * 100).toFixed(0)}%</span>
-                   <span>Rendimento: {((data.interest / data.amount) * 100).toFixed(0)}%</span>
+                <div className="flex justify-between text-[9px] font-black uppercase tracking-[0.1em] text-slate-400">
+                   <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-slate-400" /> Principal: {((data.invested / data.amount) * 100).toFixed(0)}%</span>
+                   <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Rendimento: {((data.interest / data.amount) * 100).toFixed(0)}%</span>
                 </div>
               </div>
 
               <div className="pt-4 mt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                   <div className="p-2 bg-slate-900 dark:bg-emerald-600 rounded-lg text-white">
-                      <Wallet size={14} />
+                <div className="flex items-center gap-3">
+                   <div className="p-2.5 bg-slate-900 dark:bg-emerald-600 rounded-xl text-white shadow-lg">
+                      <Wallet size={16} />
                    </div>
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Patrimônio</span>
+                   <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Patrimônio Bruto</span>
                 </div>
-                <span className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">
-                  R$ {data.amount.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
-                </span>
+                <div className="text-right">
+                  <span className="block text-2xl font-black text-slate-900 dark:text-white tracking-tighter">
+                    R$ {data.amount.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
               </div>
             </>
-          ) : isMultiLine ? (
-            <div className="space-y-3">
+          ) : isComparison ? (
+            <div className="space-y-4">
               {payload.map((p: any, idx: number) => (
-                <div key={idx} className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color || p.stroke }} />
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{p.name}</span>
+                <div key={idx} className="flex justify-between items-center group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: p.color || p.stroke }} />
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{p.name}</span>
                   </div>
-                  <span className="text-sm font-black text-slate-800 dark:text-white">
+                  <span className="text-sm font-black text-slate-900 dark:text-white">
                     R$ {p.value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                   </span>
                 </div>
               ))}
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between">
-                 <span className="text-[10px] font-black text-slate-400 uppercase">Diferença (Juros)</span>
-                 <span className="text-xs font-black text-emerald-600">R$ {(data.amount - data.invested).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</span>
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Diferença de Estratégia</span>
+                 <span className="text-xs font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg">
+                   {(payload[payload.length-1].value / payload[0].value).toFixed(1)}x mais
+                 </span>
               </div>
             </div>
           ) : (
             payload.map((p: any, idx: number) => (
               <div key={idx} className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color || p.stroke }} />
-                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{p.name}</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color || p.stroke }} />
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{p.name}</span>
                 </div>
-                <span className="text-sm font-black text-slate-800 dark:text-white">
+                <span className="text-sm font-black text-slate-900 dark:text-white">
                   R$ {p.value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                 </span>
               </div>
@@ -331,10 +345,13 @@ const Investments: React.FC<InvestmentsProps> = ({ userId, investments, setInves
               </div>
 
               <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
-                <div className="flex items-center justify-between mb-10">
-                   <h4 className="text-sm font-black dark:text-white uppercase tracking-widest flex items-center gap-2">
-                    <LineChartIcon size={18} className="text-emerald-500" /> Progressão Patrimonial
-                  </h4>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
+                   <div>
+                      <h4 className="text-sm font-black dark:text-white uppercase tracking-widest flex items-center gap-2">
+                        <LineChartIcon size={18} className="text-emerald-500" /> Progressão Patrimonial
+                      </h4>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Composição de Capital e Rendimento</p>
+                   </div>
                   <div className="flex items-center gap-3">
                     <button 
                       onClick={handleShare}
@@ -343,8 +360,15 @@ const Investments: React.FC<InvestmentsProps> = ({ userId, investments, setInves
                     >
                       <Share2 size={16} />
                     </button>
-                    <div className="px-3 py-1 bg-slate-50 dark:bg-slate-800 rounded-lg text-[10px] font-black text-slate-400 uppercase tracking-widest border border-slate-100 dark:border-slate-700">
-                      Anual
+                    <div className="flex items-center gap-4 px-4 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-slate-400" />
+                        <span className="text-[8px] font-black text-slate-400 uppercase">Capital</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="text-[8px] font-black text-slate-400 uppercase">Juros</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -352,16 +376,39 @@ const Investments: React.FC<InvestmentsProps> = ({ userId, investments, setInves
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={projection.growth.filter((_, i) => i % 12 === 0 || i === projection.growth.length - 1)}>
                       <defs>
-                        <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.15}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        <linearGradient id="colorInvested" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorInterest" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0.05}/>
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} dy={10} />
                       <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} tickFormatter={(val) => `R$ ${val >= 1000 ? (val/1000).toFixed(0) + 'k' : val}`} />
                       <Tooltip content={<EvolutionTooltip />} />
-                      <Area name="Montante Acumulado" type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorAmount)" />
+                      <Area 
+                        name="Capital Investido" 
+                        stackId="1" 
+                        type="monotone" 
+                        dataKey="invested" 
+                        stroke="#94a3b8" 
+                        strokeWidth={2} 
+                        fillOpacity={1} 
+                        fill="url(#colorInvested)" 
+                      />
+                      <Area 
+                        name="Juros Ganhos" 
+                        stackId="1" 
+                        type="monotone" 
+                        dataKey="interest" 
+                        stroke="#10b981" 
+                        strokeWidth={3} 
+                        fillOpacity={1} 
+                        fill="url(#colorInterest)" 
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
