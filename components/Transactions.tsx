@@ -1,35 +1,23 @@
 
 import React, { useState } from 'react';
 import { Transaction, Category, PaymentMethod, TransactionType, TransactionStatus, RecurringFrequency } from '../utils/types';
-import { CATEGORIES } from '../constants';
 import { processFinancialStatement } from '../utils/gemini';
 import { 
   Search, 
   Plus, 
   Trash2, 
-  FileText, 
   Sparkles, 
   X, 
   Check, 
   Loader2, 
-  AlertCircle,
-  ArrowRightLeft,
-  RefreshCcw,
   Repeat,
-  Calendar,
-  CreditCard,
-  ChevronRight,
-  Zap,
-  Filter,
   Edit2,
-  StickyNote,
-  Clock,
-  Tag,
-  Palette,
-  Save,
-  CheckCircle,
-  Repeat1,
-  History as HistoryIcon
+  Zap,
+  Wallet,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  ArrowRightLeft
 } from 'lucide-react';
 
 interface TransactionsProps {
@@ -41,13 +29,10 @@ interface TransactionsProps {
   onDelete: (id: string) => void;
 }
 
-const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
-
 const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, setCategories, onAdd, onUpdate, onDelete }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [importText, setImportText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingTransactions, setPendingTransactions] = useState<Omit<Transaction, 'id'>[]>([]);
@@ -67,19 +52,12 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
     status: 'PAID',
     paymentMethod: 'DEBIT_CARD',
     isRecurring: false,
-    frequency: 'MONTHLY',
+    frequency: 'NONE',
     installments: 1,
     notes: ''
   };
 
   const [formData, setFormData] = useState<Partial<Transaction>>(initialTransactionState);
-
-  const [newCatData, setNewCatData] = useState<Partial<Category>>({
-    name: '',
-    icon: '📂',
-    color: '#10b981',
-    type: 'EXPENSE'
-  });
 
   const filtered = transactions.filter(t => {
     const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -98,7 +76,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
     setFormData({ 
       ...t, 
       notes: t.notes || '', 
-      frequency: t.frequency || 'MONTHLY',
+      frequency: t.frequency || 'NONE',
       installments: t.installments || 1 
     });
     setEditingTransactionId(t.id);
@@ -117,34 +95,14 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.description && formData.amount && formData.categoryId) {
-      const finalData = {
-        ...formData,
-        frequency: formData.isRecurring ? formData.frequency : 'NONE',
-        installments: formData.isRecurring ? formData.installments : 1
-      };
       if (editingTransactionId) {
-        onUpdate(finalData as Transaction);
+        onUpdate(formData as Transaction);
       } else {
-        onAdd(finalData as Omit<Transaction, 'id'>);
+        onAdd(formData as Omit<Transaction, 'id'>);
       }
       setShowAddForm(false);
       setFormData(initialTransactionState);
       setEditingTransactionId(null);
-    }
-  };
-
-  const handleAddQuickCategory = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newCatData.name && newCatData.icon) {
-      const newCategory: Category = {
-        ...newCatData as Category,
-        id: Date.now().toString(),
-        type: formData.type as TransactionType
-      };
-      setCategories(prev => [...prev, newCategory]);
-      setFormData(prev => ({ ...prev, categoryId: newCategory.id }));
-      setShowAddCategoryModal(false);
-      setNewCatData({ name: '', icon: '📂', color: '#10b981', type: 'EXPENSE' });
     }
   };
 
@@ -176,17 +134,6 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
     setPendingTransactions([]);
     setImportText('');
     setShowImportModal(false);
-  };
-
-  const handleAddIndividualPending = (index: number) => {
-    const t = pendingTransactions[index];
-    onAdd(t);
-    const newList = pendingTransactions.filter((_, i) => i !== index);
-    setPendingTransactions(newList);
-    if (newList.length === 0) {
-      setImportText('');
-      setShowImportModal(false);
-    }
   };
 
   const availableCategoriesForFilter = categories.filter(c => filterType === 'ALL' || c.type === filterType);
@@ -277,7 +224,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
                         <span className="text-sm font-black text-slate-900 dark:text-white tracking-tight">{t.description}</span>
                         {t.isRecurring && (
                           <span className="flex items-center gap-1 text-[8px] font-black text-indigo-500 uppercase mt-1">
-                            <Repeat size={10} /> Recorrente ({t.frequency}) {t.installments && t.installments > 1 && `• ${t.installments} meses`}
+                            <Repeat size={10} /> Recorrente ({t.frequency})
                           </span>
                         )}
                         {t.notes && (
@@ -323,31 +270,48 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
       {showAddForm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-300">
-            <div className="p-8 bg-emerald-600 text-white flex justify-between items-center">
+            <div className={`p-8 ${formData.type === 'INCOME' ? 'bg-emerald-600' : 'bg-rose-600'} text-white flex justify-between items-center transition-colors duration-500`}>
               <h3 className="text-xl font-black uppercase tracking-tight">{editingTransactionId ? 'Editar Lançamento' : 'Novo Lançamento'}</h3>
               <button onClick={() => setShowAddForm(false)} className="p-2 hover:bg-white/20 rounded-full transition-all"><X size={24}/></button>
             </div>
             
             <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              <div className="flex gap-4 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+                <button 
+                  type="button"
+                  onClick={() => setFormData({...formData, type: 'INCOME', categoryId: categories.find(c => c.type === 'INCOME')?.id || ''})}
+                  className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${formData.type === 'INCOME' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-md' : 'text-slate-400'}`}
+                >
+                  Receita
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setFormData({...formData, type: 'EXPENSE', categoryId: categories.find(c => c.type === 'EXPENSE')?.id || ''})}
+                  className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${formData.type === 'EXPENSE' ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-md' : 'text-slate-400'}`}
+                >
+                  Despesa
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Descrição</label>
-                  <input required className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold dark:text-white" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}/>
+                  <input required className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/20" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}/>
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Valor (R$)</label>
-                  <input required type="number" step="0.01" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-slate-800 dark:text-white" value={formData.amount || ''} onChange={e => setFormData({...formData, amount: parseFloat(e.target.value)})}/>
+                  <input required type="number" step="0.01" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/20" value={formData.amount || ''} onChange={e => setFormData({...formData, amount: parseFloat(e.target.value)})}/>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Data</label>
-                  <input required type="date" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold dark:text-white" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})}/>
+                  <input required type="date" className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold dark:text-white outline-none" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})}/>
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Categoria</label>
-                  <select required className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold dark:text-white" value={formData.categoryId} onChange={e => setFormData({...formData, categoryId: e.target.value})}>
+                  <select required className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold dark:text-white outline-none" value={formData.categoryId} onChange={e => setFormData({...formData, categoryId: e.target.value})}>
                     <option value="" disabled>Selecione...</option>
                     {categoriesForCurrentType.map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
@@ -356,7 +320,24 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
                 </div>
               </div>
 
-              <button className="w-full py-5 bg-slate-900 dark:bg-slate-800 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl hover:-translate-y-1 active:scale-95 transition-all">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Método de Pagamento</label>
+                  <select className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold dark:text-white outline-none" value={formData.paymentMethod} onChange={e => setFormData({...formData, paymentMethod: e.target.value as PaymentMethod})}>
+                    <option value="CASH">Dinheiro</option>
+                    <option value="CREDIT_CARD">Cartão de Crédito</option>
+                    <option value="DEBIT_CARD">Cartão de Débito</option>
+                    <option value="PIX">PIX</option>
+                    <option value="TRANSFER">Transferência</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Notas / Observações</label>
+                  <input className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold dark:text-white outline-none" placeholder="Ex: Referente ao mês de Março" value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})}/>
+                </div>
+              </div>
+
+              <button className={`w-full py-5 ${formData.type === 'INCOME' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'} text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl hover:-translate-y-1 active:scale-95 transition-all`}>
                 {editingTransactionId ? 'Salvar Alterações' : 'Confirmar Lançamento'}
               </button>
             </form>
