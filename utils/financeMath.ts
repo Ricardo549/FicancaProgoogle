@@ -7,9 +7,10 @@ export interface AmortizationRow {
   balance: number;
 }
 
-export const calculatePrice = (amount: number, yearlyInterest: number, months: number): AmortizationRow[] => {
+export const calculatePrice = (amount: number, yearlyInterest: number, months: number, yearlyInsurance: number = 0): AmortizationRow[] => {
   const monthlyInterest = yearlyInterest / 100 / 12;
-  const installment = monthlyInterest === 0 
+  const monthlyInsurance = (amount * (yearlyInsurance / 100)) / 12;
+  const baseInstallment = monthlyInterest === 0 
     ? amount / months 
     : (amount * monthlyInterest) / (1 - Math.pow(1 + monthlyInterest, -months));
   
@@ -18,11 +19,11 @@ export const calculatePrice = (amount: number, yearlyInterest: number, months: n
 
   for (let i = 1; i <= months; i++) {
     const interest = balance * monthlyInterest;
-    const amortization = installment - interest;
+    const amortization = baseInstallment - interest;
     balance -= amortization;
     schedule.push({
       month: i,
-      installment,
+      installment: baseInstallment + monthlyInsurance,
       interest,
       amortization,
       balance: Math.max(0, balance),
@@ -31,15 +32,16 @@ export const calculatePrice = (amount: number, yearlyInterest: number, months: n
   return schedule;
 };
 
-export const calculateSac = (amount: number, yearlyInterest: number, months: number): AmortizationRow[] => {
+export const calculateSac = (amount: number, yearlyInterest: number, months: number, yearlyInsurance: number = 0): AmortizationRow[] => {
   const monthlyInterest = yearlyInterest / 100 / 12;
+  const monthlyInsurance = (amount * (yearlyInsurance / 100)) / 12;
   const amortization = amount / months;
   let balance = amount;
   const schedule: AmortizationRow[] = [];
 
   for (let i = 1; i <= months; i++) {
     const interest = balance * monthlyInterest;
-    const installment = amortization + interest;
+    const installment = amortization + interest + monthlyInsurance;
     balance -= amortization;
     schedule.push({
       month: i,

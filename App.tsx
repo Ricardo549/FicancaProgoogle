@@ -81,6 +81,21 @@ const App: React.FC = () => {
     else document.documentElement.classList.remove('dark');
   }, [config.fontFamily, config.theme]);
 
+  const handleUpdateTransaction = (updated: Transaction | Transaction[]) => {
+    if (Array.isArray(updated)) {
+      setTransactions(prev => {
+        const next = [...prev];
+        updated.forEach(u => {
+          const idx = next.findIndex(t => t.id === u.id);
+          if (idx !== -1) next[idx] = u;
+        });
+        return next;
+      });
+    } else {
+      setTransactions(prev => prev.map(t => t.id === updated.id ? updated : t));
+    }
+  };
+
   if (!user) return <Auth onLogin={setUser} />;
 
   const userPlan = user.plan || 'free';
@@ -115,10 +130,7 @@ const App: React.FC = () => {
           </div>
         </div>
         {onToggleClose && (
-          <button 
-            onClick={onToggleClose}
-            className="lg:hidden p-2 text-slate-400 hover:text-slate-600 transition-colors"
-          >
+          <button onClick={onToggleClose} className="lg:hidden p-2 text-slate-400 hover:text-slate-600 transition-colors">
             <X size={20} />
           </button>
         )}
@@ -174,10 +186,7 @@ const App: React.FC = () => {
 
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[100] lg:hidden">
-          <div 
-            className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] animate-in fade-in duration-300" 
-            onClick={() => setIsMobileMenuOpen(false)} 
-          />
+          <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]" onClick={() => setIsMobileMenuOpen(false)} />
           <aside className="absolute left-0 top-0 bottom-0 w-[280px] bg-white dark:bg-slate-900 shadow-2xl animate-in slide-in-from-left duration-300 ease-out">
             <SidebarContent onToggleClose={() => setIsMobileMenuOpen(false)} />
           </aside>
@@ -185,19 +194,15 @@ const App: React.FC = () => {
       )}
 
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        <header className="h-16 shrink-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 lg:px-8 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300">
+        <header className="h-16 shrink-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 lg:px-8 flex items-center justify-between sticky top-0 z-40">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsMobileMenuOpen(true)} 
-              className="lg:hidden p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-emerald-50 transition-all duration-300 active:scale-90"
-            >
+            <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-emerald-50 active:scale-90 transition-all">
               <Menu size={20}/>
             </button>
             <div className="flex items-center gap-2">
               <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
                 {menu.find(m => m.id === activeView)?.label || 'Visão Geral'}
               </h2>
-              {isSyncing && <Loader2 className="animate-spin text-emerald-500" size={12}/>}
             </div>
           </div>
           
@@ -209,17 +214,17 @@ const App: React.FC = () => {
                </div>
              )}
              <div className="flex items-center gap-3">
-               <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center border border-emerald-200 dark:border-emerald-800 shadow-sm transition-transform hover:rotate-6">
+               <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center border border-emerald-200 dark:border-emerald-800 shadow-sm">
                  <span className="text-sm font-black text-emerald-600">{user.name.charAt(0)}</span>
                </div>
              </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-5 lg:p-10 no-scrollbar bg-slate-50/50 dark:bg-slate-950/50 transition-colors duration-300">
+        <main className="flex-1 overflow-y-auto p-5 lg:p-10 no-scrollbar bg-slate-50/50 dark:bg-slate-950/50">
           <div className="max-w-6xl mx-auto pb-10">
             {activeView === 'dashboard' && <Dashboard transactions={transactions} goals={goals} accounts={INITIAL_ACCOUNTS} categories={categories} userPlan={userPlan} />}
-            {activeView === 'transactions' && <Transactions transactions={transactions} categories={categories} setCategories={setCategories} onAdd={(t) => setTransactions(prev => [ { ...t, id: Date.now().toString() }, ...prev ])} onDelete={(id) => setTransactions(prev => prev.filter(t => t.id !== id))} onUpdate={(u) => setTransactions(prev => prev.map(t => t.id === u.id ? u : t))} />}
+            {activeView === 'transactions' && <Transactions transactions={transactions} categories={categories} setCategories={setCategories} onAdd={(t) => setTransactions(prev => [ { ...t, id: Date.now().toString() }, ...prev ])} onDelete={(id) => setTransactions(prev => prev.filter(t => t.id !== id))} onUpdate={handleUpdateTransaction} />}
             {activeView === 'planning' && <Planning goals={goals} setGoals={setGoals} transactions={transactions} />}
             {activeView === 'investments' && <Investments userId={user.id} investments={investments} setInvestments={setInvestments} userPlan={userPlan} />}
             {activeView === 'credit' && <CreditSimulator />}

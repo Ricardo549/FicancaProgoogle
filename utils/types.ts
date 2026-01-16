@@ -17,7 +17,7 @@ export interface User {
 
 export interface Category {
   id: string;
-  userId?: string; // Se for null, é uma categoria padrão do sistema
+  userId?: string; 
   name: string;
   icon: string;
   color: string;
@@ -27,6 +27,7 @@ export interface Category {
 export interface Transaction {
   id: string;
   userId: string;
+  seriesId?: string | null; // Agrupador de recorrência
   description: string;
   amount: number;
   date: string;
@@ -57,7 +58,7 @@ export interface FinancialGoal {
   targetAmount: number;
   currentAmount: number;
   deadline: string;
-  categoryIds?: string[]; // Metas podem filtrar categorias
+  categoryIds?: string[];
 }
 
 export interface Investment {
@@ -68,7 +69,7 @@ export interface Investment {
   initialAmount: number;
   currentAmount: number;
   monthlyAport: number;
-  expectedReturn: number; // yearly %
+  expectedReturn: number;
 }
 
 export interface AppConfig {

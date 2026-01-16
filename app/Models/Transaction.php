@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Models;
@@ -12,12 +13,15 @@ class Transaction extends Model
     protected $fillable = [
         'user_id',
         'category_id',
+        'series_id', // Novo campo para agrupamento
         'description',
         'amount',
         'date',
         'type',
         'status',
         'payment_method',
+        'is_recurring',
+        'frequency',
         'notes'
     ];
 
