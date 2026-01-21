@@ -4,7 +4,8 @@ import {
   LayoutDashboard, History, Target, TrendingUp, Calculator, Settings as SettingsIcon,
   LogOut, Menu, X, Shield, Star, Lock, Loader2
 } from 'lucide-react';
-import { Transaction, Account, FinancialGoal, Investment, Category, User, AppConfig } from './utils/types';
+import { supabase } from './utils/supabase';
+import { Transaction, FinancialGoal, Investment, Category, User, AppConfig, Account } from './utils/types';
 import { INITIAL_ACCOUNTS, CATEGORIES as INITIAL_CATEGORIES } from './constants';
 import Dashboard from './components/Dashboard';
 import Transactions from './components/Transactions';
@@ -25,55 +26,117 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [isSyncing, setIsSyncing] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [session, setSession] = useState<any>(null);
   
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('fpro_user') || 'null');
-    } catch {
-      return null;
-    }
-  });
-
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    return JSON.parse(localStorage.getItem('fpro_tx') || '[]');
-  });
-  
-  const [goals, setGoals] = useState<FinancialGoal[]>(() => {
-    return JSON.parse(localStorage.getItem('fpro_goals') || '[]');
-  });
-
-  const [investments, setInvestments] = useState<Investment[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [goals, setGoals] = useState<FinancialGoal[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>(INITIAL_ACCOUNTS);
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
 
-  const [config, setConfig] = useState<AppConfig>(() => {
-    try {
-      const saved = localStorage.getItem('fin_config');
-      return saved ? JSON.parse(saved) : {
-        theme: 'light',
-        fontFamily: 'Inter',
-        language: 'pt-BR',
-        currency: 'BRL',
-        privacyMode: false,
-        notifications: true
-      };
-    } catch {
-      return { theme: 'light', fontFamily: 'Inter', language: 'pt-BR', currency: 'BRL', privacyMode: false, notifications: true };
-    }
+  const [config, setConfig] = useState<AppConfig>({
+    theme: 'light',
+    fontFamily: 'Inter',
+    language: 'pt-BR',
+    currency: 'BRL',
+    privacyMode: false,
+    notifications: true
   });
 
   useEffect(() => {
-    localStorage.setItem('fpro_tx', JSON.stringify(transactions));
-  }, [transactions]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) handleUserSession(session);
+    });
 
-  useEffect(() => {
-    localStorage.setItem('fpro_goals', JSON.stringify(goals));
-  }, [goals]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) handleUserSession(session);
+      else setUser(null);
+    });
 
-  useEffect(() => {
-    if (user) localStorage.setItem('fpro_user', JSON.stringify(user));
-    else localStorage.removeItem('fpro_user');
-    localStorage.setItem('fin_config', JSON.stringify(config));
-  }, [user, config]);
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleUserSession = async (session: any) => {
+    // Tenta carregar dados extras da tabela profiles
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+
+    setUser({
+      id: session.user.id,
+      name: profile?.full_name || session.user.user_metadata.full_name || session.user.email.split('@')[0],
+      email: session.user.email,
+      avatar: profile?.avatar_url || session.user.user_metadata.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.id}`,
+      plan: profile?.plan || 'free',
+      createdAt: session.user.created_at
+    });
+    loadData();
+  };
+
+  const loadData = async () => {
+    setIsSyncing(true);
+    try {
+      const { data: txData } = await supabase.from('transactions').select('*').order('date', { ascending: false });
+      if (txData) setTransactions(txData);
+
+      const { data: goalData } = await supabase.from('goals').select('*');
+      if (goalData) setGoals(goalData);
+
+      const { data: catData } = await supabase.from('categories').select('*');
+      if (catData && catData.length > 0) setCategories(catData);
+
+      const { data: accData } = await supabase.from('accounts').select('*');
+      if (accData && accData.length > 0) setAccounts(accData);
+    } catch (error) {
+      console.error("Erro ao carregar dados do Supabase:", error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleAddTransaction = async (newT: Omit<Transaction, 'id'>) => {
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert([{ ...newT, user_id: session?.user.id }])
+      .select();
+
+    if (!error && data) {
+      setTransactions(prev => [data[0], ...prev]);
+    } else if (error) {
+      console.error("Erro ao adicionar transação:", error);
+    }
+  };
+
+  const handleUpdateTransaction = async (updated: Transaction | Transaction[]) => {
+    const updates = Array.isArray(updated) ? updated : [updated];
+    
+    for (const item of updates) {
+      const { error } = await supabase
+        .from('transactions')
+        .update(item)
+        .eq('id', item.id)
+        .eq('user_id', session?.user.id);
+      
+      if (error) console.error("Erro no update:", error);
+    }
+    loadData();
+  };
+
+  const handleDeleteTransaction = async (id: string) => {
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', session?.user.id);
+
+    if (!error) {
+      setTransactions(prev => prev.filter(t => t.id !== id));
+    }
+  };
 
   useEffect(() => {
     document.body.style.fontFamily = `'${config.fontFamily}', sans-serif`;
@@ -81,25 +144,9 @@ const App: React.FC = () => {
     else document.documentElement.classList.remove('dark');
   }, [config.fontFamily, config.theme]);
 
-  const handleUpdateTransaction = (updated: Transaction | Transaction[]) => {
-    if (Array.isArray(updated)) {
-      setTransactions(prev => {
-        const next = [...prev];
-        updated.forEach(u => {
-          const idx = next.findIndex(t => t.id === u.id);
-          if (idx !== -1) next[idx] = u;
-        });
-        return next;
-      });
-    } else {
-      setTransactions(prev => prev.map(t => t.id === updated.id ? updated : t));
-    }
-  };
+  if (!session) return <Auth onLogin={() => {}} />;
 
-  if (!user) return <Auth onLogin={setUser} />;
-
-  const userPlan = user.plan || 'free';
-  const isAdmin = user.email === ADMIN_EMAIL;
+  const isAdmin = session.user.email === ADMIN_EMAIL;
 
   const menu = [
     { id: 'dashboard', label: 'Painel Geral', icon: <LayoutDashboard size={20}/> },
@@ -169,7 +216,7 @@ const App: React.FC = () => {
           </button>
         )}
         <button 
-          onClick={() => setUser(null)} 
+          onClick={() => supabase.auth.signOut()} 
           className="w-full flex items-center gap-4 px-4 py-3 text-[12px] font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10 rounded-2xl transition-all duration-300"
         >
           <LogOut size={18} /> Sair do Sistema
@@ -203,11 +250,12 @@ const App: React.FC = () => {
               <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
                 {menu.find(m => m.id === activeView)?.label || 'Visão Geral'}
               </h2>
+              {isSyncing && <Loader2 size={12} className="animate-spin text-emerald-500" />}
             </div>
           </div>
           
           <div className="flex items-center gap-4">
-             {userPlan === 'pro' && (
+             {user?.plan === 'pro' && (
                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-500 rounded-full border border-amber-500/20">
                  <Star size={12} className="fill-amber-500" />
                  <span className="text-[9px] font-black uppercase tracking-widest">Premium</span>
@@ -215,7 +263,7 @@ const App: React.FC = () => {
              )}
              <div className="flex items-center gap-3">
                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center border border-emerald-200 dark:border-emerald-800 shadow-sm">
-                 <span className="text-sm font-black text-emerald-600">{user.name.charAt(0)}</span>
+                 <span className="text-sm font-black text-emerald-600">{user?.name.charAt(0)}</span>
                </div>
              </div>
           </div>
@@ -223,14 +271,14 @@ const App: React.FC = () => {
 
         <main className="flex-1 overflow-y-auto p-5 lg:p-10 no-scrollbar bg-slate-50/50 dark:bg-slate-950/50">
           <div className="max-w-6xl mx-auto pb-10">
-            {activeView === 'dashboard' && <Dashboard transactions={transactions} goals={goals} accounts={INITIAL_ACCOUNTS} categories={categories} userPlan={userPlan} />}
-            {activeView === 'transactions' && <Transactions transactions={transactions} categories={categories} setCategories={setCategories} onAdd={(t) => setTransactions(prev => [ { ...t, id: Date.now().toString() }, ...prev ])} onDelete={(id) => setTransactions(prev => prev.filter(t => t.id !== id))} onUpdate={handleUpdateTransaction} />}
+            {activeView === 'dashboard' && <Dashboard transactions={transactions} goals={goals} accounts={accounts} categories={categories} userPlan={user?.plan} />}
+            {activeView === 'transactions' && <Transactions transactions={transactions} categories={categories} setCategories={setCategories} onAdd={handleAddTransaction} onDelete={handleDeleteTransaction} onUpdate={handleUpdateTransaction} accounts={accounts} />}
             {activeView === 'planning' && <Planning goals={goals} setGoals={setGoals} transactions={transactions} />}
-            {activeView === 'investments' && <Investments userId={user.id} investments={investments} setInvestments={setInvestments} userPlan={userPlan} />}
+            {activeView === 'investments' && <Investments userId={user?.id || ''} investments={[]} setInvestments={() => {}} userPlan={user?.plan} />}
             {activeView === 'credit' && <CreditSimulator />}
             {activeView === 'settings' && <Settings user={user} setUser={setUser} config={config} setConfig={setConfig} categories={categories} setCategories={setCategories} navigateToPrivacy={() => handleNavigate('privacy')} />}
             {activeView === 'privacy' && <PrivacyPolicy onBack={() => handleNavigate('dashboard')} />}
-            {activeView === 'checkout' && <Checkout onCancel={() => handleNavigate('dashboard')} onSuccess={() => { setUser({...user, plan: 'pro'}); handleNavigate('dashboard'); }} user={user} />}
+            {activeView === 'checkout' && <Checkout onCancel={() => handleNavigate('dashboard')} onSuccess={() => { loadData(); handleNavigate('dashboard'); }} user={user} />}
             {activeView === 'admin' && isAdmin && <Admin />}
           </div>
         </main>

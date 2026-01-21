@@ -1,10 +1,9 @@
 
-import React, { useState, useMemo } from 'react';
-import { Transaction, Category, PaymentMethod, TransactionType, TransactionStatus, RecurringFrequency } from '../utils/types';
-import { processFinancialStatement } from '../utils/gemini';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Transaction, Category, PaymentMethod, TransactionType, TransactionStatus, RecurringFrequency, Account } from '../utils/types';
 import { 
-  Search, Plus, Trash2, Sparkles, X, Check, Loader2, Repeat, Edit2, Zap, Calendar, 
-  ArrowRightLeft, AlertCircle, FileText, Tag, DollarSign, CreditCard, Info, Clock
+  Search, Plus, Trash2, X, Repeat, Edit2, Zap, Calendar, 
+  AlertCircle, FileText, Tag, CreditCard, Clock, Wallet
 } from 'lucide-react';
 
 interface TransactionsProps {
@@ -14,11 +13,20 @@ interface TransactionsProps {
   onAdd: (t: Omit<Transaction, 'id'>) => void;
   onUpdate: (t: Transaction | Transaction[]) => void;
   onDelete: (id: string) => void;
+  accounts?: Account[]; // Adicionado para permitir seleção de conta
 }
 
 type UpdateMode = 'SINGLE' | 'FUTURE' | 'ALL';
 
-const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, setCategories, onAdd, onUpdate, onDelete }) => {
+const Transactions: React.FC<TransactionsProps> = ({ 
+  transactions, 
+  categories, 
+  setCategories, 
+  onAdd, 
+  onUpdate, 
+  onDelete,
+  accounts = [] 
+}) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [viewingTransaction, setViewingTransaction] = useState<Transaction | null>(null);
@@ -35,16 +43,28 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
     date: new Date().toISOString().split('T')[0],
     type: 'EXPENSE',
     categoryId: '',
+    accountId: accounts[0]?.id || '',
     status: 'PAID',
     paymentMethod: 'DEBIT_CARD',
     isRecurring: false,
-    frequency: 'NONE',
-    installments: 1,
     notes: '',
     seriesId: null
   };
 
   const [formData, setFormData] = useState<Partial<Transaction>>(initialTransactionState);
+
+  // Filtragem inteligente de categorias para o formulário
+  const categoriesForCurrentType = useMemo(() => {
+    return categories.filter(c => c.type === formData.type);
+  }, [categories, formData.type]);
+
+  // Atualiza a categoria padrão quando o tipo muda no formulário
+  useEffect(() => {
+    if (showAddForm && !editingTransactionId) {
+      const firstValidCat = categoriesForCurrentType[0]?.id || '';
+      setFormData(prev => ({ ...prev, categoryId: firstValidCat }));
+    }
+  }, [formData.type, categoriesForCurrentType, showAddForm, editingTransactionId]);
 
   const filtered = useMemo(() => {
     return transactions.filter(t => {
@@ -55,13 +75,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
     });
   }, [transactions, searchTerm, filterType, filterCategory]);
 
-  // Added categoriesForCurrentType to fix the "Cannot find name 'categoriesForCurrentType'" error
-  const categoriesForCurrentType = useMemo(() => {
-    return categories.filter(c => c.type === formData.type);
-  }, [categories, formData.type]);
-
   const handleEdit = (t: Transaction, e: React.MouseEvent) => {
-    e.stopPropagation(); // Evita abrir o modal de visualização
+    e.stopPropagation();
     setFormData({ ...t });
     setEditingTransactionId(t.id);
     setUpdateMode('SINGLE');
@@ -69,7 +84,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
   };
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Evita abrir o modal de visualização
+    e.stopPropagation();
     if (window.confirm('Deseja realmente excluir este lançamento?')) {
       onDelete(id);
     }
@@ -78,7 +93,8 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
   const handleOpenNew = () => {
     setFormData({
       ...initialTransactionState,
-      categoryId: categories.find(c => c.type === 'EXPENSE')?.id || ''
+      categoryId: categories.find(c => c.type === 'EXPENSE')?.id || '',
+      accountId: accounts[0]?.id || ''
     });
     setEditingTransactionId(null);
     setShowAddForm(true);
@@ -86,7 +102,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.description && formData.amount && formData.categoryId) {
+    if (formData.description && formData.amount && formData.categoryId && formData.accountId) {
       if (editingTransactionId) {
         if (formData.isRecurring && formData.seriesId && updateMode !== 'SINGLE') {
           const updates: Transaction[] = [];
@@ -99,6 +115,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
                   description: formData.description!,
                   amount: formData.amount!,
                   categoryId: formData.categoryId!,
+                  accountId: formData.accountId!,
                   paymentMethod: formData.paymentMethod!,
                   notes: formData.notes
                 });
@@ -198,10 +215,7 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
             onClick={e => e.stopPropagation()}
           >
             <div className={`p-10 ${viewingTransaction.type === 'INCOME' ? 'bg-emerald-600' : 'bg-rose-600'} text-white relative`}>
-              <button 
-                onClick={() => setViewingTransaction(null)} 
-                className="absolute top-6 right-6 p-2 hover:bg-white/20 rounded-full transition-all"
-              >
+              <button onClick={() => setViewingTransaction(null)} className="absolute top-6 right-6 p-2 hover:bg-white/20 rounded-full transition-all">
                 <X size={24}/>
               </button>
               <div className="space-y-2">
@@ -244,15 +258,6 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
                 </div>
               )}
 
-              {viewingTransaction.isRecurring && (
-                <div className="flex items-center gap-3 p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
-                  <Repeat size={18} className="text-indigo-600" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:text-indigo-400">
-                    Este lançamento faz parte de uma recorrência ativa
-                  </p>
-                </div>
-              )}
-
               <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex gap-3">
                 <button 
                   onClick={(e) => { handleEdit(viewingTransaction, e); setViewingTransaction(null); }}
@@ -278,6 +283,27 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
             <form onSubmit={handleSubmit} className="p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Tipo</label>
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                    <button type="button" onClick={() => setFormData({...formData, type: 'EXPENSE'})} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${formData.type === 'EXPENSE' ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm' : 'text-slate-400'}`}>Despesa</button>
+                    <button type="button" onClick={() => setFormData({...formData, type: 'INCOME'})} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${formData.type === 'INCOME' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'text-slate-400'}`}>Receita</button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Conta / Origem</label>
+                  <select 
+                    required
+                    className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-2xl font-bold dark:text-white outline-none"
+                    value={formData.accountId}
+                    onChange={e => setFormData({...formData, accountId: e.target.value})}
+                  >
+                    {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Descrição</label>
                   <input required className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-2xl font-bold dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/20" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                 </div>
@@ -291,11 +317,13 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Categoria</label>
                   <select 
+                    required
                     className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-2xl font-bold dark:text-white outline-none"
                     value={formData.categoryId}
                     onChange={e => setFormData({...formData, categoryId: e.target.value})}
                   >
                     {categoriesForCurrentType.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                    {categoriesForCurrentType.length === 0 && <option value="">Nenhuma categoria</option>}
                   </select>
                 </div>
                 <div className="space-y-2">
@@ -314,31 +342,6 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, categories, s
                     onChange={e => setFormData({...formData, notes: e.target.value})}
                   />
               </div>
-
-              <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                <Repeat size={20} className={formData.isRecurring ? 'text-emerald-500' : 'text-slate-300'} />
-                <div className="flex-1">
-                  <p className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-400">Repetir Lançamento</p>
-                  <p className="text-[9px] font-bold text-slate-400">Gera parcelas automáticas baseadas na frequência</p>
-                </div>
-                <button type="button" onClick={() => setFormData({...formData, isRecurring: !formData.isRecurring})} className={`w-10 h-5 rounded-full p-1 transition-all ${formData.isRecurring ? 'bg-emerald-500' : 'bg-slate-200'}`}>
-                  <div className={`w-3 h-3 bg-white rounded-full transition-transform ${formData.isRecurring ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
-              </div>
-
-              {editingTransactionId && formData.isRecurring && formData.seriesId && (
-                <div className="p-5 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100 dark:border-emerald-800/50 space-y-4">
-                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                    <AlertCircle size={16} />
-                    <p className="text-[10px] font-black uppercase tracking-widest">Escopo da Alteração</p>
-                  </div>
-                  <div className="grid grid-cols-1 gap-2">
-                    <UpdateModeBtn active={updateMode === 'SINGLE'} onClick={() => setUpdateMode('SINGLE')} label="Apenas esta parcela" desc="Mantém o histórico e o futuro intactos." />
-                    <UpdateModeBtn active={updateMode === 'FUTURE'} onClick={() => setUpdateMode('FUTURE')} label="Esta e próximas" desc="Reajusta o valor de hoje em diante." />
-                    <UpdateModeBtn active={updateMode === 'ALL'} onClick={() => setUpdateMode('ALL')} label="Toda a série" desc="Aplica a todos os meses (passado e futuro)." />
-                  </div>
-                </div>
-              )}
 
               <button className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest text-xs text-white shadow-xl hover:-translate-y-1 transition-all active:scale-95 ${formData.type === 'INCOME' ? 'bg-emerald-600' : 'bg-rose-600'}`}>
                 {editingTransactionId ? 'Salvar Alteração' : 'Confirmar Lançamento'}
@@ -359,13 +362,6 @@ const DetailItem = ({ icon, label, value, color }: any) => (
     </div>
     <p className={`text-sm font-black dark:text-white ${color || 'text-slate-800'}`}>{value}</p>
   </div>
-);
-
-const UpdateModeBtn = ({ active, onClick, label, desc }: any) => (
-  <button type="button" onClick={onClick} className={`text-left p-3 rounded-xl border-2 transition-all ${active ? 'border-emerald-500 bg-white dark:bg-slate-800 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'}`}>
-    <p className="text-[10px] font-black uppercase dark:text-white">{label}</p>
-    <p className="text-[8px] font-bold text-slate-400 leading-none mt-1">{desc}</p>
-  </button>
 );
 
 export default Transactions;
