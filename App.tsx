@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   LayoutDashboard, History, Target, TrendingUp, Calculator, Settings as SettingsIcon,
-  LogOut, Menu, X, Shield, Lock, Loader2, Key, AlertTriangle, User as UserIcon
+  LogOut, Menu, X, Shield, Lock, Loader2, Key, User as UserIcon
 } from 'lucide-react';
 import { supabase } from './utils/supabase';
 import { Transaction, FinancialGoal, Investment, Category, User, AppConfig, Account } from './utils/types';
@@ -47,7 +47,6 @@ const App: React.FC = () => {
   const loadData = useCallback(async (userId: string) => {
     setIsSyncing(true);
     try {
-      // Carregamento paralelo para performance
       const [
         { data: txData },
         { data: goalData },
@@ -73,34 +72,19 @@ const App: React.FC = () => {
         currentAmount: Number(g.current_amount), deadline: g.deadline
       })));
 
-      // Properly mapping snake_case from Supabase DB to camelCase interfaces defined in types.ts
       if (accData) setAccounts(accData.map(acc => ({
-        id: acc.id,
-        userId: acc.user_id,
-        name: acc.name,
-        balance: Number(acc.balance),
-        type: acc.type,
-        color: acc.color
+        id: acc.id, userId: acc.user_id, name: acc.name, balance: Number(acc.balance),
+        type: acc.type, color: acc.color
       })));
 
       if (catData) setCategories(catData.map(cat => ({
-        id: cat.id,
-        userId: cat.user_id,
-        name: cat.name,
-        icon: cat.icon,
-        color: cat.color,
-        type: cat.type
+        id: cat.id, userId: cat.user_id, name: cat.name, icon: cat.icon, color: cat.color, type: cat.type
       })));
 
       if (invData) setInvestments(invData.map(inv => ({
-        id: inv.id,
-        userId: inv.user_id,
-        name: inv.name,
-        type: inv.type,
-        initialAmount: Number(inv.initial_amount),
-        currentAmount: Number(inv.current_amount),
-        monthlyAport: Number(inv.monthly_aport),
-        expectedReturn: Number(inv.expected_return)
+        id: inv.id, userId: inv.user_id, name: inv.name, type: inv.type,
+        initialAmount: Number(inv.initial_amount), currentAmount: Number(inv.current_amount),
+        monthlyAport: Number(inv.monthly_aport), expectedReturn: Number(inv.expected_return)
       })));
 
     } catch (error) {
@@ -165,7 +149,25 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateTransactions = async (updated: Transaction | Transaction[]) => {
+  const handleAddTransaction = async (newT: Omit<Transaction, 'id'>) => {
+    if (!user) return;
+    const { error } = await supabase.from('transactions').insert([{
+      user_id: user.id,
+      description: newT.description,
+      amount: newT.amount,
+      date: newT.date,
+      type: newT.type,
+      category_id: newT.categoryId,
+      account_id: newT.accountId,
+      status: newT.status,
+      payment_method: newT.paymentMethod,
+      is_recurring: newT.isRecurring,
+      notes: newT.notes
+    }]);
+    if (!error) loadData(user.id);
+  };
+
+  const handleUpdateTransaction = async (updated: Transaction | Transaction[]) => {
     if (!user) return;
     const items = Array.isArray(updated) ? updated : [updated];
     for (const item of items) {
@@ -176,6 +178,12 @@ const App: React.FC = () => {
       }).eq('id', item.id);
     }
     loadData(user.id);
+  };
+
+  const handleDeleteTransaction = async (id: string) => {
+    if (!user) return;
+    const { error } = await supabase.from('transactions').delete().eq('id', id);
+    if (!error) loadData(user.id);
   };
 
   if (!session) return <Auth onLogin={() => {}} />;
@@ -210,13 +218,20 @@ const App: React.FC = () => {
     { id: 'privacy', label: 'Privacidade', icon: <Shield size={20}/> },
   ];
 
+  const handleNavigate = (view: View) => {
+    setActiveView(view);
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden">
+      {/* Menu Lateral Desktop */}
       <aside className="hidden lg:flex w-72 shrink-0 h-full flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
-        <SidebarContent menu={menu} activeView={activeView} isAdmin={isAdmin} setActiveView={setActiveView} />
+        <SidebarContent menu={menu} activeView={activeView} isAdmin={isAdmin} setActiveView={handleNavigate} />
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 h-full">
+        {/* Header Principal */}
         <header className="h-16 shrink-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between z-40">
           <div className="flex items-center gap-4">
             <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 text-slate-600 dark:text-slate-300">
@@ -236,20 +251,34 @@ const App: React.FC = () => {
           </div>
         </header>
 
+        {/* Área de Conteúdo */}
         <main className="flex-1 overflow-y-auto p-5 lg:p-10 no-scrollbar">
           <div className="max-w-6xl mx-auto pb-10">
             {activeView === 'dashboard' && <Dashboard transactions={transactions} goals={goals} accounts={accounts} categories={categories} userPlan={user?.plan} />}
-            {activeView === 'transactions' && <Transactions transactions={transactions} categories={categories} setCategories={setCategories} onAdd={() => loadData(user!.id)} onDelete={(id) => loadData(user!.id)} onUpdate={handleUpdateTransactions} accounts={accounts} />}
+            {activeView === 'transactions' && <Transactions transactions={transactions} categories={categories} setCategories={setCategories} onAdd={handleAddTransaction} onDelete={handleDeleteTransaction} onUpdate={handleUpdateTransaction} accounts={accounts} />}
             {activeView === 'planning' && <Planning goals={goals} setGoals={() => loadData(user!.id)} transactions={transactions} />}
             {activeView === 'investments' && <Investments userId={user?.id || ''} investments={investments} setInvestments={() => loadData(user!.id)} userPlan={user?.plan} />}
             {activeView === 'credit' && <CreditSimulator />}
-            {activeView === 'settings' && <Settings user={user} setUser={setUser} config={config} setConfig={setConfig} categories={categories} setCategories={setCategories} navigateToPrivacy={() => setActiveView('privacy')} />}
-            {activeView === 'privacy' && <PrivacyPolicy onBack={() => setActiveView('dashboard')} />}
-            {activeView === 'checkout' && <Checkout onCancel={() => setActiveView('dashboard')} onSuccess={() => { handleUserSession(session); setActiveView('dashboard'); }} user={user} />}
+            {activeView === 'settings' && <Settings user={user} setUser={setUser} config={config} setConfig={setConfig} categories={categories} setCategories={setCategories} navigateToPrivacy={() => handleNavigate('privacy')} />}
+            {activeView === 'privacy' && <PrivacyPolicy onBack={() => handleNavigate('dashboard')} />}
+            {activeView === 'checkout' && <Checkout onCancel={() => handleNavigate('dashboard')} onSuccess={() => { handleUserSession(session); handleNavigate('dashboard'); }} user={user} />}
             {activeView === 'admin' && isAdmin && <Admin />}
           </div>
         </main>
       </div>
+
+      {/* Menu Mobile */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm lg:hidden animate-in fade-in duration-300">
+           <div className="w-72 h-full bg-white dark:bg-slate-900 animate-in slide-in-from-left-4 duration-500">
+              <div className="p-6 flex justify-between items-center">
+                 <h1 className="text-lg font-black text-slate-800 dark:text-white">Menu</h1>
+                 <button onClick={() => setIsMobileMenuOpen(false)}><X size={20}/></button>
+              </div>
+              <SidebarContent menu={menu} activeView={activeView} isAdmin={isAdmin} setActiveView={handleNavigate} />
+           </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -31,20 +31,36 @@ export const getFinancialInsights = async (
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            tips: { type: Type.ARRAY, items: { type: Type.STRING } },
-            healthScore: { type: Type.NUMBER },
-            reasoning: { type: Type.STRING }
+            tips: { 
+              type: Type.ARRAY, 
+              items: { type: Type.STRING },
+              description: "Dicas personalizadas para o usuário."
+            },
+            healthScore: { 
+              type: Type.NUMBER,
+              description: "Nota de 0 a 100 da saúde financeira."
+            },
+            reasoning: { 
+              type: Type.STRING,
+              description: "Breve explicação do score."
+            }
           },
           required: ["tips", "healthScore"]
         }
       }
     });
 
-    return JSON.parse(response.text || "{}");
+    // IMPORTANTE: No novo SDK do @google/genai, .text é uma propriedade getter, não um método.
+    const textOutput = response.text || "{}";
+    return JSON.parse(textOutput);
   } catch (error) {
     console.error("Gemini AI Error:", error);
     return {
-      tips: ["Revise seus gastos fixos mensais.", "Tente poupar ao menos 10% da sua renda.", "Mantenha sua planilha atualizada diariamente."],
+      tips: [
+        "Revise seus gastos fixos mensais para identificar oportunidades de corte.",
+        "Tente poupar ao menos 10% da sua renda mensal para sua reserva de emergência.",
+        "Mantenha seu fluxo de caixa atualizado diariamente para evitar surpresas no fim do mês."
+      ],
       healthScore: 70
     };
   }

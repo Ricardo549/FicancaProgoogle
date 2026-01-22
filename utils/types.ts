@@ -17,7 +17,7 @@ export interface User {
 
 export interface Category {
   id: string;
-  userId?: string; 
+  userId?: string | null; 
   name: string;
   icon: string;
   color: string;
@@ -47,7 +47,7 @@ export interface Account {
   userId: string;
   name: string;
   balance: number;
-  type: AccountType;
+  type: string;
   color?: string;
 }
 
@@ -65,7 +65,7 @@ export interface Investment {
   id: string;
   userId: string;
   name: string;
-  type: 'FIXED_INCOME' | 'STOCKS' | 'FUNDS' | 'CRYPTO';
+  type: string;
   initialAmount: number;
   currentAmount: number;
   monthlyAport: number;
