@@ -27,7 +27,7 @@ export interface Category {
 export interface Transaction {
   id: string;
   userId: string;
-  seriesId?: string | null; // Agrupador de recorrência
+  seriesId?: string | null;
   description: string;
   amount: number;
   date: string;

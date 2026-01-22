@@ -13,7 +13,7 @@ interface TransactionsProps {
   onAdd: (t: Omit<Transaction, 'id'>) => void;
   onUpdate: (t: Transaction | Transaction[]) => void;
   onDelete: (id: string) => void;
-  accounts?: Account[]; // Adicionado para permitir seleção de conta
+  accounts?: Account[];
 }
 
 type UpdateMode = 'SINGLE' | 'FUTURE' | 'ALL';
@@ -53,12 +53,10 @@ const Transactions: React.FC<TransactionsProps> = ({
 
   const [formData, setFormData] = useState<Partial<Transaction>>(initialTransactionState);
 
-  // Filtragem inteligente de categorias para o formulário
   const categoriesForCurrentType = useMemo(() => {
     return categories.filter(c => c.type === formData.type);
   }, [categories, formData.type]);
 
-  // Atualiza a categoria padrão quando o tipo muda no formulário
   useEffect(() => {
     if (showAddForm && !editingTransactionId) {
       const firstValidCat = categoriesForCurrentType[0]?.id || '';
@@ -207,7 +205,6 @@ const Transactions: React.FC<TransactionsProps> = ({
         </div>
       </div>
 
-      {/* Modal de Detalhes da Transação */}
       {viewingTransaction && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4" onClick={() => setViewingTransaction(null)}>
           <div 
@@ -271,7 +268,6 @@ const Transactions: React.FC<TransactionsProps> = ({
         </div>
       )}
 
-      {/* Modal de Formulário (Add/Edit) */}
       {showAddForm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in duration-300 border border-white/10">

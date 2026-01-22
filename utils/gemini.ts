@@ -9,25 +9,31 @@ export const getFinancialInsights = async (
 ) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const summary = transactions.slice(0, 30).map(t => ({
-    desc: t.description,
-    val: t.amount,
-    cat: categories.find(c => c.id === t.categoryId)?.name || 'Geral',
-    type: t.type
-  }));
+  const summary = {
+    totalIncome: transactions.filter(t => t.type === 'INCOME').reduce((acc, t) => acc + t.amount, 0),
+    totalExpense: transactions.filter(t => t.type === 'EXPENSE').reduce((acc, t) => acc + t.amount, 0),
+    recentTransactions: transactions.slice(0, 10).map(t => ({
+      d: t.description,
+      v: t.amount,
+      c: categories.find(c => c.id === t.categoryId)?.name
+    })),
+    goals: goals.map(g => ({ t: g.title, p: (g.currentAmount / g.targetAmount) * 100 }))
+  };
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
-      contents: `Analise estes dados: Transações: ${JSON.stringify(summary)}. Metas: ${JSON.stringify(goals)}. Forneça 3 dicas práticas e uma nota de saúde (0-100).`,
+      contents: `Analise meu perfil financeiro: ${JSON.stringify(summary)}. 
+      Gere 3 dicas estratégicas para economizar e uma nota de saúde financeira de 0 a 100 baseada no balanço mensal.`,
       config: {
-        thinkingConfig: { thinkingBudget: 2000 },
+        thinkingConfig: { thinkingBudget: 4000 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
             tips: { type: Type.ARRAY, items: { type: Type.STRING } },
-            healthScore: { type: Type.NUMBER }
+            healthScore: { type: Type.NUMBER },
+            reasoning: { type: Type.STRING }
           },
           required: ["tips", "healthScore"]
         }
@@ -36,42 +42,10 @@ export const getFinancialInsights = async (
 
     return JSON.parse(response.text || "{}");
   } catch (error) {
+    console.error("Gemini AI Error:", error);
     return {
-      tips: ["Mantenha sua reserva de emergência ativa.", "Evite parcelamentos longos.", "Diversifique seus aportes."],
-      healthScore: 65
+      tips: ["Revise seus gastos fixos mensais.", "Tente poupar ao menos 10% da sua renda.", "Mantenha sua planilha atualizada diariamente."],
+      healthScore: 70
     };
-  }
-};
-
-export const processFinancialStatement = async (text: string, categories: Category[]) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const cats = categories.map(c => ({ id: c.id, name: c.name, type: c.type }));
-  
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Extraia transações deste texto: "${text}". Categorias: ${JSON.stringify(cats)}. Retorne array de objetos.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              description: { type: Type.STRING },
-              amount: { type: Type.NUMBER },
-              date: { type: Type.STRING },
-              type: { type: Type.STRING },
-              categoryId: { type: Type.STRING }
-            },
-            required: ["description", "amount", "date", "type", "categoryId"]
-          }
-        }
-      }
-    });
-
-    return JSON.parse(response.text || "[]");
-  } catch (error) {
-    throw new Error("Falha ao processar.");
   }
 };
